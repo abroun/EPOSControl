@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+<!DOCTYPE PyObject SYSTEM "PyObjects.dtd">
+<PyObject module="node" class="Node" id="156041772">
+<attr name="Profile" type="dict" id="2959795580" >
+</attr>
+<attr name="Description" type="string">Skeleton Object Dictionary for EPOSControl Library</attr>
+<attr name="Dictionary" type="dict" id="2959795444" >
+  <entry>
+    <key type="numeric" value="4096" />
+    <val type="numeric" value="0" />
+  </entry>
+  <entry>
+    <key type="numeric" value="4736" />
+    <val type="list" id="2959755180" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="1" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4738" />
+    <val type="list" id="2959755148" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="3" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4739" />
+    <val type="list" id="2959772300" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="4" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4740" />
+    <val type="list" id="2959773452" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="5" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4741" />
+    <val type="list" id="2959773388" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="6" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4742" />
+    <val type="list" id="2959773260" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="7" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4097" />
+    <val type="numeric" value="0" />
+  </entry>
+  <entry>
+    <key type="numeric" value="4744" />
+    <val type="list" id="2959772556" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="9" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4745" />
+    <val type="list" id="2959773196" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="10" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4746" />
+    <val type="list" id="2959767884" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="11" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4747" />
+    <val type="list" id="2959768620" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="12" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4748" />
+    <val type="list" id="2959768556" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="13" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4749" />
+    <val type="list" id="2959768844" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="14" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4750" />
+    <val type="list" id="2959767564" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="15" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4751" />
+    <val type="list" id="2959766284" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="16" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4120" />
+    <val type="list" id="2959767180" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4743" />
+    <val type="list" id="2959766476" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="8" />
+    </val>
+  </entry>
+  <entry>
+    <key type="numeric" value="4737" />
+    <val type="list" id="2959768044" >
+      <item type="numeric" value="0" />
+      <item type="numeric" value="0" />
+      <item type="numeric" value="2" />
+    </val>
+  </entry>
+</attr>
+<attr name="SpecificMenu" type="list" id="2959768108" >
+</attr>
+<attr name="ParamsDictionary" type="dict" id="2959799132" >
+  <entry>
+    <key type="numeric" value="4752" />
+    <val type="dict" id="2959799676" >
+      <entry>
+        <key type="string" value="callback" />
+        <val type="False" value="" />
+      </entry>
+    </val>
+  </entry>
+</attr>
+<attr name="UserMapping" type="dict" id="2959799268" >
+</attr>
+<attr name="DS302" type="dict" id="2959799812" >
+</attr>
+<attr name="ProfileName" type="string" value="None" />
+<attr name="Type" type="string" value="master" />
+<attr name="ID" type="numeric" value="0" />
+<attr name="Name" type="string">EPOSMaster</attr>
+</PyObject>

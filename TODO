@@ -1,0 +1,9 @@
+Todo
+====
+
+- Get PDO working for reading data (joint angles) from the EPOS controllers
+- Clearly define a split between the library and test programs
+    - Define routines for setting up nodes in profile position mode (keep in mind that maybe not all nodes will be setup in the same mode)
+
+- Create Python bindings
+- Create ROS node that exposes the functionality of the library

@@ -95,7 +95,7 @@ eControlState gControlState = eCS_WaitingToStart;
 S32 TARGET_POSITIONS[] =
 {
     0,
-    50000
+    10000 //50000
 };
 S32 NUM_TARGET_POSITONS = sizeof( TARGET_POSITIONS )/sizeof( TARGET_POSITIONS[ 0 ] );
 S32 gCurTargetPosition = 0;
@@ -123,7 +123,7 @@ void Master_initialisation(CO_Data* d)
 {
     printf( "Initialisation called\n" );
     
-    for ( int i = 1; i <= 16; i++ )
+    for ( int i = 1; i <= 18; i++ )
     {
         UNS32 transmitCOBID = 0x600 + i;
         UNS32 transmitCOBIDSize = sizeof(transmitCOBID);
@@ -142,11 +142,39 @@ void Master_initialisation(CO_Data* d)
 void Master_preOperational(CO_Data* d)
 {
     printf( "PreOperational called\n" );
+    
+    // Setup Local Dictionary to handle PDO data from the other nodes on the CANBus
+    UNS32 recieveCOBID = 0x180 + MASTER_NODE_ID;
+    UNS32 size = sizeof( recieveCOBID );
+    writeLocalDict( &EPOSMaster_Data, 0x1400, 1, &recieveCOBID, &size, 1 );
+    
+    U8 numMappedFields = 0;         // Disable PDO
+    size = sizeof( numMappedFields );
+    writeLocalDict( &EPOSMaster_Data, 0x1600, 0, &numMappedFields, &size, 1 );
+    
+    printf( "Trying to set mappedField\n" );
+    
+    U32 mappedField = ( 0x2000 << 16 ) | ( 0x02 << 8 ) | 32;   // Statusword // Actual position
+    size = sizeof( mappedField );
+    U32 result = writeLocalDict( &EPOSMaster_Data, 0x1600, 1, &mappedField, &size, 1 );
+    
+    printf( "Trying Done... Result was %i\n", result );
+    
+    U32 mappingParam = 0;
+    U32 expectedSize = sizeof( mappingParam );
+    U8 dataType;
+    
+    readLocalDict( &EPOSMaster_Data, 0x1600, 1, &mappingParam, &expectedSize, &dataType, 1 );
+    printf( "Mapping param should be: 0x%X but is 0x%X\n", mappedField, mappingParam );
+    
+    numMappedFields = 1;    // Re-enable PDO
+    size = sizeof( numMappedFields );
+    writeLocalDict( &EPOSMaster_Data, 0x1600, 0, &numMappedFields, &size, 1 );
 }
 
 void Master_operational(CO_Data* d)
 {
-    printf( "Operationa called\n" );
+    printf( "Operational called\n" );
 }
 
 void Master_stopped(CO_Data* d)
@@ -342,10 +370,21 @@ void Update(CO_Data* d, UNS32 id)
     
     //printf( "Updating\n" );
     
-    if ( !gbActiveSlaves[ 5 ] )
+    if ( !gbActiveSlaves[ NODE_ID ] )
     {
         return;
     }
+    
+    S32 curPosition = 0;
+    U32 expectedSize = sizeof( curPosition );
+    U8 dataType;
+    readLocalDict( &EPOSMaster_Data, 0x2000, 2, &curPosition, &expectedSize, &dataType, 1 );
+    
+    
+    
+    printf( "Cur Position: %i\n", curPosition );
+    
+    //sendPDOrequest( &EPOSMaster_Data, 0x1400 );
     
     switch ( gProgramState )
     {
@@ -353,6 +392,9 @@ void Update(CO_Data* d, UNS32 id)
         {
             if ( !gbSDOFieldsInUse )
             {
+                masterSendNMTstateChange( &EPOSMaster_Data, NODE_ID, NMT_Enter_PreOperational );
+                
+                
                 gbSDOFieldsInUse = true;
                 gSDOFieldBuffer[ 0 ] = SDOField( "Motor Type", 0x6402, 0 );
                 gSDOFieldBuffer[ 1 ] = SDOField( "Current Limit", 0x6410, 1 );
@@ -397,8 +439,20 @@ void Update(CO_Data* d, UNS32 id)
             {
                 gSDOFieldBuffer[ 0 ] = SDOField( "Profile Velocity", 0x6081, 0 );
                 gSDOFieldBuffer[ 0 ].SetU32( 500 );
+                gSDOFieldBuffer[ 1 ] = SDOField( "Transmit PDO 1 Parameter", 0x1800, 1 );
+                gSDOFieldBuffer[ 1 ].SetU32( 0x180 + MASTER_NODE_ID );
+                gSDOFieldBuffer[ 2 ] = SDOField( "Transmit PDO 1 Transmission Type", 0x1800, 2 );
+                gSDOFieldBuffer[ 2 ].SetU8( 255 );    // Asynchronous transfer
+                gSDOFieldBuffer[ 3 ] = SDOField( "Transmit PDO 1 Inhibition time", 0x1800, 3 );
+                gSDOFieldBuffer[ 3 ].SetU16( 100 );    // Should limit transfer to once every 10ms
+                gSDOFieldBuffer[ 4 ] = SDOField( "Transmit PDO 1 Map - Num Items", 0x1A00, 0 );
+                gSDOFieldBuffer[ 4 ].SetU8( 0 );    // Disable PDO first
+                gSDOFieldBuffer[ 5 ] = SDOField( "Transmit PDO 1 Map - Item 1", 0x1A00, 1 );
+                gSDOFieldBuffer[ 5 ].SetU32( ( 0x6064 << 16 ) | ( 0x00 << 8 ) | 32 );    // Actual position
+                gSDOFieldBuffer[ 6 ] = SDOField( "Transmit PDO 1 Map - Num Items", 0x1A00, 0 );
+                gSDOFieldBuffer[ 6 ].SetU8( 1 );    // Reenable PDO
                 
-                gCurNumSDOFields = 1;
+                gCurNumSDOFields = 7;
                 
                 gCurSDOFieldIdx = 0;
                 SDOField& curField = gSDOFieldBuffer[ gCurSDOFieldIdx ];
@@ -415,11 +469,20 @@ void Update(CO_Data* d, UNS32 id)
         {
             if ( !gbSDOFieldsInUse )
             {
-                printf( "Reading back set value\n" );
+                printf( "Reading back set values\n" );
                 
                 gbSDOFieldsInUse = true;
+                //masterSendNMTstateChange( &EPOSMaster_Data, NODE_ID, NMT_Start_Node );
+                //masterSendNMTstateChange( &EPOSMaster_Data, MASTER_NODE_ID, NMT_Start_Node );
+                
                 gSDOFieldBuffer[ 0 ] = SDOField( "Profile Velocity", 0x6081, 0 );
-                gCurNumSDOFields = 1;
+                gSDOFieldBuffer[ 1 ] = SDOField( "Transmit PDO 1 Parameter", 0x1800, 1 );
+                gSDOFieldBuffer[ 2 ] = SDOField( "Transmit PDO 1 Transmission Type", 0x1800, 2 );
+                gSDOFieldBuffer[ 3 ] = SDOField( "Transmit PDO 1 Inhibition time", 0x1800, 3 );
+                gSDOFieldBuffer[ 4 ] = SDOField( "Transmit PDO 1 Map - Num Items", 0x1A00, 0 );
+                gSDOFieldBuffer[ 5 ] = SDOField( "Transmit PDO 1 Map - Item 1", 0x1A00, 1 );
+                gSDOFieldBuffer[ 6 ] = SDOField( "Status word", 0x6041, 0 );
+                gCurNumSDOFields = 7;
                 
                 gCurSDOFieldIdx = 0;
                 SDOField& curField = gSDOFieldBuffer[ gCurSDOFieldIdx ];
@@ -434,6 +497,10 @@ void Update(CO_Data* d, UNS32 id)
         {
             if ( !gbSDOFieldsInUse )
             {
+                // Move the node into the operational state
+                setState( &EPOSMaster_Data, Operational );
+                masterSendNMTstateChange( &EPOSMaster_Data, NODE_ID, NMT_Start_Node );
+                masterSendNMTstateChange( &EPOSMaster_Data, MASTER_NODE_ID, NMT_Start_Node );
                 gProgramState = ePS_ControllingNode;
             }
             break;

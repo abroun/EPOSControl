@@ -1,9 +1,50 @@
 Todo
 ====
 
-- Get PDO working for reading data (joint angles) from the EPOS controllers
 - Clearly define a split between the library and test programs
     - Define routines for setting up nodes in profile position mode (keep in mind that maybe not all nodes will be setup in the same mode)
 
 - Create Python bindings
 - Create ROS node that exposes the functionality of the library
+
+Library Design
+==============
+
+- The aim of the library is to provide an easy way to configure and control a number of EPOS motor controllers.
+- The commands and options offered by the library should conform closely to the features of the EPOS motor controller without being too prescriptive about how it should be used.
+- It might be worthwhile exposing the CAN communication so that custom stuff can be done before specific library routines are invoked.
+
+Requirements
+------------
+
+- Should be able to control a variable number of CANNodes on a given CAN bus
+- Check that the nodes to be controlled are EPOS motor controllers
+- Should be able to configure a node for a specific mode of operation 
+- Should be able to set up custom PDO mappings so that chosen variables are automatically written into a buffer
+
+Early Plans
+-----------
+
+- Library opens up CAN communication on a specific CAN bus 
+    - resets all nodes on the CAN bus
+    - and creates objects to represent all EPOS motor controllers found on the bus
+- User of the library can query the number of motor controllers available
+- Individual (or groups) of motor controllers can be configured to operate in a certain way. The configuration will have to be asynchornous requiring a busy wait for now... :P
+- In a similar way, PDO can be set up to read chosen variables into a buffer
+- Nodes can just be active or inactive for now
+- The CAN communication is exposed so that users can send custom commands to the nodes if they wish (and if they know what they're doing)
+- To send new commands to the nodes or to retrieve data, the Mutex for CANFestival will have to be acquired. Tests need to be done to make sure that this doesn't cause big performance issues.
+
+ROS Server plans
+----------------
+
+Once the EPOS control library has been written it should be possible to setup a ROS node that automatically configures and exposes the available CAN nodes. It may want to set the joint limits from Haze's Skeleton file.
+It can then publish data from the EPOS control library at regular intervals and accept
+commands as ROS topics
+
+- It may be worthwhile to break the ROSserver into 2 parts. A c library that does most of the grunt work and a ROS layer that just parses the Skeleton file and provides the network messages. This would hopefully make it easier to integrate with YARP if needed but on the other hand it may not be worth the effort.
+
+Done
+====
+
+- Get PDO working for reading data (joint angles) from the EPOS controllers - 3/11/2010

@@ -6,6 +6,8 @@
 /**************************************************************************/
 /* Declaration of mapped variables                                        */
 /**************************************************************************/
+UNS16 Node1Data_Statusword = 0x0;		/* Mapped at index 0x2000, subindex 0x01 */
+INTEGER32 Node1Data_Actual_Position = 0x0;		/* Mapped at index 0x2000, subindex 0x02 */
 
 /**************************************************************************/
 /* Declaration of value range types                                       */
@@ -313,6 +315,84 @@ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
                        { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_obj128F_Node_ID_of_the_SDO_Server }
                      };
 
+/* index 0x1290 :   Client SDO 17 Parameter. */
+                    UNS8 EPOSMaster_highestSubIndex_obj1290 = 3; /* number of subindex - 1*/
+                    UNS32 EPOSMaster_obj1290_COB_ID_Client_to_Server_Transmit_SDO = 0x0;	/* 0 */
+                    UNS32 EPOSMaster_obj1290_COB_ID_Server_to_Client_Receive_SDO = 0x0;	/* 0 */
+                    UNS8 EPOSMaster_obj1290_Node_ID_of_the_SDO_Server = 0x11;	/* 17 */
+                    subindex EPOSMaster_Index1290[] = 
+                     {
+                       { RO, uint8, sizeof (UNS8), (void*)&EPOSMaster_highestSubIndex_obj1290 },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1290_COB_ID_Client_to_Server_Transmit_SDO },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1290_COB_ID_Server_to_Client_Receive_SDO },
+                       { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_obj1290_Node_ID_of_the_SDO_Server }
+                     };
+
+/* index 0x1291 :   Client SDO 18 Parameter. */
+                    UNS8 EPOSMaster_highestSubIndex_obj1291 = 3; /* number of subindex - 1*/
+                    UNS32 EPOSMaster_obj1291_COB_ID_Client_to_Server_Transmit_SDO = 0x0;	/* 0 */
+                    UNS32 EPOSMaster_obj1291_COB_ID_Server_to_Client_Receive_SDO = 0x0;	/* 0 */
+                    UNS8 EPOSMaster_obj1291_Node_ID_of_the_SDO_Server = 0x12;	/* 18 */
+                    subindex EPOSMaster_Index1291[] = 
+                     {
+                       { RO, uint8, sizeof (UNS8), (void*)&EPOSMaster_highestSubIndex_obj1291 },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1291_COB_ID_Client_to_Server_Transmit_SDO },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1291_COB_ID_Server_to_Client_Receive_SDO },
+                       { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_obj1291_Node_ID_of_the_SDO_Server }
+                     };
+
+/* index 0x1400 :   Receive PDO 1 Parameter. */
+                    UNS8 EPOSMaster_highestSubIndex_obj1400 = 5; /* number of subindex - 1*/
+                    UNS32 EPOSMaster_obj1400_COB_ID_used_by_PDO = 0x200;	/* 512 */
+                    UNS8 EPOSMaster_obj1400_Transmission_Type = 0x0;	/* 0 */
+                    UNS16 EPOSMaster_obj1400_Inhibit_Time = 0x0;	/* 0 */
+                    UNS8 EPOSMaster_obj1400_Compatibility_Entry = 0x0;	/* 0 */
+                    UNS16 EPOSMaster_obj1400_Event_Timer = 0x0;	/* 0 */
+                    subindex EPOSMaster_Index1400[] = 
+                     {
+                       { RO, uint8, sizeof (UNS8), (void*)&EPOSMaster_highestSubIndex_obj1400 },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1400_COB_ID_used_by_PDO },
+                       { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_obj1400_Transmission_Type },
+                       { RW, uint16, sizeof (UNS16), (void*)&EPOSMaster_obj1400_Inhibit_Time },
+                       { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_obj1400_Compatibility_Entry },
+                       { RW, uint16, sizeof (UNS16), (void*)&EPOSMaster_obj1400_Event_Timer }
+                     };
+
+/* index 0x1600 :   Receive PDO 1 Mapping. */
+                    UNS8 EPOSMaster_highestSubIndex_obj1600 = 8; /* number of subindex - 1*/
+                    UNS32 EPOSMaster_obj1600[] = 
+                    {
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0,	/* 0 */
+                      0x0	/* 0 */
+                    };
+                    subindex EPOSMaster_Index1600[] = 
+                     {
+                       { RW, uint8, sizeof (UNS8), (void*)&EPOSMaster_highestSubIndex_obj1600 },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[0] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[1] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[2] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[3] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[4] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[5] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[6] },
+                       { RW, uint32, sizeof (UNS32), (void*)&EPOSMaster_obj1600[7] }
+                     };
+
+/* index 0x2000 :   Mapped variable Node1Data */
+                    UNS8 EPOSMaster_highestSubIndex_obj2000 = 2; /* number of subindex - 1*/
+                    subindex EPOSMaster_Index2000[] = 
+                     {
+                       { RO, uint8, sizeof (UNS8), (void*)&EPOSMaster_highestSubIndex_obj2000 },
+                       { RW, uint16, sizeof (UNS16), (void*)&Node1Data_Statusword },
+                       { RW, int32, sizeof (INTEGER32), (void*)&Node1Data_Actual_Position }
+                     };
+
 /**************************************************************************/
 /* Declaration of pointed variables                                       */
 /**************************************************************************/
@@ -338,6 +418,11 @@ const indextable EPOSMaster_objdict[] =
   { (subindex*)EPOSMaster_Index128D,sizeof(EPOSMaster_Index128D)/sizeof(EPOSMaster_Index128D[0]), 0x128D},
   { (subindex*)EPOSMaster_Index128E,sizeof(EPOSMaster_Index128E)/sizeof(EPOSMaster_Index128E[0]), 0x128E},
   { (subindex*)EPOSMaster_Index128F,sizeof(EPOSMaster_Index128F)/sizeof(EPOSMaster_Index128F[0]), 0x128F},
+  { (subindex*)EPOSMaster_Index1290,sizeof(EPOSMaster_Index1290)/sizeof(EPOSMaster_Index1290[0]), 0x1290},
+  { (subindex*)EPOSMaster_Index1291,sizeof(EPOSMaster_Index1291)/sizeof(EPOSMaster_Index1291[0]), 0x1291},
+  { (subindex*)EPOSMaster_Index1400,sizeof(EPOSMaster_Index1400)/sizeof(EPOSMaster_Index1400[0]), 0x1400},
+  { (subindex*)EPOSMaster_Index1600,sizeof(EPOSMaster_Index1600)/sizeof(EPOSMaster_Index1600[0]), 0x1600},
+  { (subindex*)EPOSMaster_Index2000,sizeof(EPOSMaster_Index2000)/sizeof(EPOSMaster_Index2000[0]), 0x2000},
 };
 
 const indextable * EPOSMaster_scanIndexOD (UNS16 wIndex, UNS32 * errorCode, ODCallback_t **callbacks)
@@ -364,6 +449,11 @@ const indextable * EPOSMaster_scanIndexOD (UNS16 wIndex, UNS32 * errorCode, ODCa
 		case 0x128D: i = 16;break;
 		case 0x128E: i = 17;break;
 		case 0x128F: i = 18;break;
+		case 0x1290: i = 19;break;
+		case 0x1291: i = 20;break;
+		case 0x1400: i = 21;break;
+		case 0x1600: i = 22;break;
+		case 0x2000: i = 23;break;
 		default:
 			*errorCode = OD_NO_SUCH_OBJECT;
 			return NULL;
@@ -382,17 +472,17 @@ s_PDO_status EPOSMaster_PDO_status[1] = {s_PDO_status_Initializer};
 const quick_index EPOSMaster_firstIndex = {
   0, /* SDO_SVR */
   3, /* SDO_CLT */
-  0, /* PDO_RCV */
-  0, /* PDO_RCV_MAP */
+  21, /* PDO_RCV */
+  22, /* PDO_RCV_MAP */
   0, /* PDO_TRS */
   0 /* PDO_TRS_MAP */
 };
 
 const quick_index EPOSMaster_lastIndex = {
   0, /* SDO_SVR */
-  18, /* SDO_CLT */
-  0, /* PDO_RCV */
-  0, /* PDO_RCV_MAP */
+  20, /* SDO_CLT */
+  21, /* PDO_RCV */
+  22, /* PDO_RCV_MAP */
   0, /* PDO_TRS */
   0 /* PDO_TRS_MAP */
 };

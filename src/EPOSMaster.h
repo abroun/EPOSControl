@@ -12,5 +12,7 @@ const indextable * EPOSMaster_scanIndexOD (UNS16 wIndex, UNS32 * errorCode, ODCa
 
 /* Master node data struct */
 extern CO_Data EPOSMaster_Data;
+extern UNS16 Node1Data_Statusword;		/* Mapped at index 0x2000, subindex 0x01 */
+extern INTEGER32 Node1Data_Actual_Position;		/* Mapped at index 0x2000, subindex 0x02 */
 
 #endif // EPOSMASTER_H

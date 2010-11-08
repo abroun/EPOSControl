@@ -121,7 +121,7 @@ void Master_heartbeatError(CO_Data* d, UNS8)
 
 void Master_initialisation(CO_Data* d)
 {
-    printf( "Initialisation called\n" );
+    printf( "Initialisation called - d == &EPOSMaster_Data = %i\n", &EPOSMaster_Data == d );
     
     for ( int i = 1; i <= 18; i++ )
     {
@@ -368,6 +368,7 @@ void Update(CO_Data* d, UNS32 id)
 {
     static bool bDataValuesRead = false;
     
+    printf( "Update called - d == &EPOSMaster_Data = %i %x\n", &EPOSMaster_Data == d, d );
     //printf( "Updating\n" );
     
     if ( !gbActiveSlaves[ NODE_ID ] )

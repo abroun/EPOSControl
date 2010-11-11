@@ -9,19 +9,24 @@
 
 //------------------------------------------------------------------------------
 #include "Common.h"
+#include "EPOSControl/CANMotorController.h"
 
 //------------------------------------------------------------------------------
-struct CANChannelImpl;
+struct CANMotorControllerConfig;
 
 //------------------------------------------------------------------------------
 class CANChannel
 {
+    //--------------------------------------------------------------------------
     public: CANChannel();
     public: ~CANChannel();
     
+    //--------------------------------------------------------------------------
     public: bool Init( const char* canDevice, eBaudRate baudRate );
     public: void Deinit();
     
+    //--------------------------------------------------------------------------
+    // Callbacks used by the CANOpen library
     public: void OnCANOpenHeartbeatError( U8 error );
     public: void OnCANOpenInitialisation();
     public: void OnCANOpenPreOperational();
@@ -32,7 +37,10 @@ class CANChannel
     public: void OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg );
     public: void OnCANOpenPostSlaveBootup( U8 nodeId );
     
-    private: CANChannelImpl* mpImpl;
+    //--------------------------------------------------------------------------
+    public: static const U8 ALL_MOTOR_CONTROLLERS = 0;
+    public: static const U8 MAX_NUM_MOTOR_CONTROLLERS = 128;
+    private: CANMotorController mMotorControllers[ MAX_NUM_MOTOR_CONTROLLERS ];
     private: bool mbInitialised;
 };
 

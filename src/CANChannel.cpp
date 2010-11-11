@@ -13,12 +13,6 @@
 #include "CANFestivalInterface.h"
 
 //------------------------------------------------------------------------------
-struct CANChannelImpl
-{
-    
-};
-
-//------------------------------------------------------------------------------
 CANChannel::CANChannel()
     : mbInitialised( false )
 {
@@ -82,6 +76,9 @@ void CANChannel::OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg )
 void CANChannel::OnCANOpenPostSlaveBootup( U8 nodeId )
 {
     printf( "PostSlaveBootup for node %i called\n", nodeId );
+    
+    mMotorControllers[ nodeId ].Deinit();   // Call in case the motor controller was running earlier
+    mMotorControllers[ nodeId ].Init( nodeId );
 }
     
 //------------------------------------------------------------------------------
@@ -105,6 +102,11 @@ Finished:
 //------------------------------------------------------------------------------
 void CANChannel::Deinit()
 {
+    for ( S32 controllerIdx = 0; controllerIdx < MAX_NUM_MOTOR_CONTROLLERS; controllerIdx++ )
+    {
+        mMotorControllers[ controllerIdx ].Deinit();
+    }
+    
     CFI_DeinitCANChannel( this );
     
     mbInitialised = false;

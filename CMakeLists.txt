@@ -13,6 +13,8 @@ ADD_LIBRARY( EPOSControl
     src/CANFestivalInterface.cpp
     src/CANChannel.cpp
     src/EPOSControl.cpp
+    src/CANMotorController.cpp
+    src/SDOField.cpp
     src/ObjDict/EPOSObjectDict_1.c
     src/ObjDict/EPOSObjectDict_2.c )
 

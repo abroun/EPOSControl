@@ -37,5 +37,14 @@ enum eBaudRate
 //------------------------------------------------------------------------------
 #define MAX_NUM_CAN_CHANNELS 2
 
+//------------------------------------------------------------------------------
+enum eNMT_State
+{
+    eNMTS_Unknown,
+    eNMTS_Initialisation,
+    eNMTS_PreOperational,
+    eNMTS_Operational,
+    eNMTS_Stopped
+};
 
 #endif // EPOS_CONTROL_COMMON_H

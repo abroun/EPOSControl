@@ -22,6 +22,7 @@ struct SDOField
     //--------------------------------------------------------------------------
     enum eType
     {
+        eT_Invalid = -1,
         eT_Read,
         eT_Write,
         eT_NumTypes

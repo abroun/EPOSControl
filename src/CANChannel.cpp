@@ -77,8 +77,7 @@ void CANChannel::OnCANOpenPostSlaveBootup( U8 nodeId )
 {
     printf( "PostSlaveBootup for node %i called\n", nodeId );
     
-    mMotorControllers[ nodeId ].Deinit();   // Call in case the motor controller was running earlier
-    mMotorControllers[ nodeId ].Init( nodeId );
+    mMotorControllers[ nodeId ].TellAboutNMTState( eNMTS_PreOperational );
 }
     
 //------------------------------------------------------------------------------
@@ -92,6 +91,11 @@ bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
             goto Finished;
         }
         
+        for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+        {
+            mMotorControllers[ nodeId ].Init( nodeId );
+        }
+        
         mbInitialised = true;
     }
     
@@ -102,9 +106,9 @@ Finished:
 //------------------------------------------------------------------------------
 void CANChannel::Deinit()
 {
-    for ( S32 controllerIdx = 0; controllerIdx < MAX_NUM_MOTOR_CONTROLLERS; controllerIdx++ )
+    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
     {
-        mMotorControllers[ controllerIdx ].Deinit();
+        mMotorControllers[ nodeId ].Deinit();
     }
     
     CFI_DeinitCANChannel( this );

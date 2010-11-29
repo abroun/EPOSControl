@@ -22,6 +22,8 @@ struct EnsureNMTState
         eT_Active,  // Tries to set the state if it's not set
     };
     
+    EnsureNMTState()
+        : mType( eT_Passive ), mDesiredState( eNMTS_Initialisation ) {}
     EnsureNMTState( eType type, eNMT_State desiredState )
         : mType( type ), mDesiredState( desiredState ) {}
     
@@ -46,11 +48,8 @@ struct CANMotorControllerAction
     static CANMotorControllerAction CreateSDOFieldAction( SDOField& field );
     
     eType mType;
-    union
-    {
-        EnsureNMTState mEnsureNMTState;
-        SDOField mSDOField;
-    } mData;
+    EnsureNMTState mEnsureNMTState;
+    SDOField mSDOField;
 };
 
 #endif // CAN_MOTOR_CONTROLLER_ACTION_H

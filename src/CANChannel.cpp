@@ -93,7 +93,7 @@ bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
         
         for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
         {
-            mMotorControllers[ nodeId ].Init( nodeId );
+            mMotorControllers[ nodeId ].Init( this, nodeId );
         }
         
         mbInitialised = true;

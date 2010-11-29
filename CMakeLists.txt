@@ -57,7 +57,12 @@ INSTALL( DIRECTORY ${PROJECT_SOURCE_DIR}/include/EPOSControl DESTINATION include
 ADD_LIBRARY( EPOSControlPython SHARED interfaces/python/PyEPOSControl.cpp )
 SET_TARGET_PROPERTIES( EPOSControlPython 
     PROPERTIES OUTPUT_NAME PyEPOSControl )
-TARGET_LINK_LIBRARIES( EPOSControlPython EPOSControl )
+TARGET_LINK_LIBRARIES( EPOSControlPython
+    EPOSControl
+    pcan
+    canfestival_unix 
+    canfestival
+    pthread rt dl )
 SET_TARGET_PROPERTIES( EPOSControlPython PROPERTIES PREFIX "" )
 INSTALL( TARGETS EPOSControlPython
         LIBRARY DESTINATION ${PYTHON_PLUGIN_INSTALL_PATH} )

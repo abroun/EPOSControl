@@ -20,7 +20,7 @@ CANMotorControllerAction CANMotorControllerAction::CreateEnsureNMTStateAction( E
     CANMotorControllerAction action;
     
     action.mType = eT_EnsureNMTState;
-    action.mData.mEnsureNMTState = ensureState;
+    action.mEnsureNMTState = ensureState;
     
     return action;
 }
@@ -31,7 +31,7 @@ CANMotorControllerAction CANMotorControllerAction::CreateSDOFieldAction( SDOFiel
     CANMotorControllerAction action;
     
     action.mType = eT_SDOField;
-    action.mData.mSDOField = field;
+    action.mSDOField = field;
     
     return action;
 }

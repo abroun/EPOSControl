@@ -43,6 +43,7 @@ class CANMotorController
         eS_Inactive,
         eS_ProcessingConfigurationActions,
         eS_ProcessingExtraActions,
+        eS_PollingForPosition,
     };
     
     //--------------------------------------------------------------------------
@@ -70,12 +71,19 @@ class CANMotorController
     public: void TellAboutNMTState( eNMT_State state );
     public: eNMT_State GetLastKnownNMTState() const { return mLastKnownNMTState; }
   
+    public: void OnSDOFieldWriteComplete();
+    public: void OnSDOFieldReadComplete( U8* pData, U32 numBytes );
+  
     //--------------------------------------------------------------------------
     // The communication state machine is used to keep track of communications
     // with the motor controller, trying to ensure that that the motor 
     // controller is in
     public: enum eCommunicationState
     {
+        eCS_Inactive,
+        eCS_WaitingForSDORead,
+        eCS_WaitingForSDOWrite,
+        eCS_NumCommunicationStates
     };
   
     //--------------------------------------------------------------------------
@@ -133,6 +141,9 @@ class CANMotorController
     private: S32 mNumConfigurationActionsDone;
     
     private: eNMT_State mLastKnownNMTState;
+    private: eCommunicationState mCommunicationState;
+    private: SDOField* mpActiveSDOField;
+    private: SDOField mReadAction;
     private: eState mState;
 };
 

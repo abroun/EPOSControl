@@ -44,8 +44,8 @@ struct CANMotorControllerAction
     
     CANMotorControllerAction();
     
-    static CANMotorControllerAction CreateEnsureNMTStateAction( EnsureNMTState& ensureState );
-    static CANMotorControllerAction CreateSDOFieldAction( SDOField& field );
+    static CANMotorControllerAction CreateEnsureNMTStateAction( const EnsureNMTState& ensureState );
+    static CANMotorControllerAction CreateSDOFieldAction( const SDOField& field );
     
     eType mType;
     EnsureNMTState mEnsureNMTState;

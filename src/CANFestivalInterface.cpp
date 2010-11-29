@@ -102,7 +102,7 @@ void MasterInitialisation( CO_Data* pCANOpenData )
 
 //------------------------------------------------------------------------------
 void MasterPreOperational( CO_Data* pCANOpenData )
-{
+{   
     ChannelMapping* pMapping = FindMapping( pCANOpenData );
     if ( NULL != pMapping )
     {
@@ -179,7 +179,66 @@ void TimerStartCallback( CO_Data* pCANOpenData, U32 id )
 //------------------------------------------------------------------------------
 void UpdateCallback( CO_Data* pCANOpenData, U32 id )
 {
+    for ( S32 mappingIdx = 0; mappingIdx < MAX_NUM_CAN_CHANNELS; mappingIdx++ )
+    {
+        if ( NULL != gChannelMappings[ mappingIdx ].mpChannel )
+        {
+            gChannelMappings[ mappingIdx ].mpChannel->OnCANUpdate();
+        }
+    }
     printf( "Update called\n" );
+}
+
+//------------------------------------------------------------------------------
+void ReadSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
+{
+    U32 abortCode;
+    U8 data[ sizeof( SDOField::mData ) ];
+    U32 numBytes = sizeof( data );    
+    
+    U8 readResult = getReadResultNetworkDict( pCANOpenData, 
+        nodeId, data, &numBytes, &abortCode );
+    
+    // Finalize last SDO transfer with this node
+    closeSDOtransfer( pCANOpenData, nodeId, SDO_CLIENT );
+    
+    if ( readResult != SDO_FINISHED )
+    {
+        printf("\nResult : Failed in getting information for slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
+    }
+    else
+    {        
+        ChannelMapping* pMapping = FindMapping( pCANOpenData );
+        if ( NULL != pMapping )
+        {
+            pMapping->mpChannel->OnSDOFieldReadComplete( nodeId, data, numBytes );
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void WriteSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
+{
+    printf( "Write callback called\n" );
+    
+    U32 abortCode;
+    U8 writeResult = getWriteResultNetworkDict( pCANOpenData, nodeId, &abortCode );
+    
+    // Finalize last SDO transfer with this node
+    closeSDOtransfer( pCANOpenData, nodeId, SDO_CLIENT );
+    
+    if ( writeResult != SDO_FINISHED )
+    {
+        printf("\nResult : Failed in getting information for slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
+    }
+    else
+    {
+        ChannelMapping* pMapping = FindMapping( pCANOpenData );
+        if ( NULL != pMapping )
+        {
+            pMapping->mpChannel->OnSDOFieldWriteComplete( nodeId );
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -293,7 +352,7 @@ bool CFI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate 
         }
         
         EnterMutex();
-        setNodeId( pMapping->mpCANOpenData, 25 );
+        setNodeId( pMapping->mpCANOpenData, MASTER_NODE_ID );
         setState( pMapping->mpCANOpenData, Initialisation );
         LeaveMutex();
         
@@ -324,5 +383,49 @@ void CFI_DeinitCANChannel( CANChannel* pChannel )
         
         canClose( pMapping->mpCANOpenData ); 
         pMapping->mpChannel = NULL;
+    }
+}
+
+//------------------------------------------------------------------------------
+void CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
+{
+    if ( 5 != nodeId )
+    {
+        return;
+    }
+    
+    ChannelMapping* pMapping = FindMapping( pChannel );
+    if ( NULL != pMapping )
+    {
+        switch ( field.mType )
+        {
+            case SDOField::eT_Write:
+            {
+                printf( "Processing write for node %i\n", nodeId );
+                printf( "%i %i b: %i a: %x\n", field.mIndex, field.mSubIndex, 
+                    field.mNumBytes, field.mData );
+                
+                writeNetworkDictCallBack( pMapping->mpCANOpenData,
+                    nodeId, field.mIndex, field.mSubIndex, 
+                    field.mNumBytes, 0, field.mData,
+                    WriteSDOFieldCallback );
+                    
+                printf( "Write sent\n" );
+                break;
+            }
+            case SDOField::eT_Read:
+            {
+                printf( "Processing read\n" );
+                
+                readNetworkDictCallback( pMapping->mpCANOpenData,
+                    nodeId, field.mIndex, field.mSubIndex, 
+                    0, ReadSDOFieldCallback );
+                break;
+            }
+            default:
+            {
+                assert( false && "Unhandled field type" );
+            }
+        }
     }
 }

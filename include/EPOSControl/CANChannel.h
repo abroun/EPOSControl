@@ -12,9 +12,6 @@
 #include "EPOSControl/CANMotorController.h"
 
 //------------------------------------------------------------------------------
-struct CANMotorControllerConfig;
-
-//------------------------------------------------------------------------------
 class CANChannel
 {
     //--------------------------------------------------------------------------
@@ -36,6 +33,12 @@ class CANChannel
     public: void OnCANOpenPostTPDO();
     public: void OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg );
     public: void OnCANOpenPostSlaveBootup( U8 nodeId );
+    public: void OnSDOFieldWriteComplete( U8 nodeId );
+    public: void OnSDOFieldReadComplete( U8 nodeId, U8* pData, U32 numBytes );
+    public: void OnCANUpdate();
+    
+    //--------------------------------------------------------------------------
+    public: void ConfigureAllMotorControllersForPositionControl();
     
     //--------------------------------------------------------------------------
     public: static const U8 ALL_MOTOR_CONTROLLERS = 0;

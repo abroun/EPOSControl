@@ -15,7 +15,7 @@ CANMotorControllerAction::CANMotorControllerAction()
 }
 
 //------------------------------------------------------------------------------
-CANMotorControllerAction CANMotorControllerAction::CreateEnsureNMTStateAction( EnsureNMTState& ensureState )
+CANMotorControllerAction CANMotorControllerAction::CreateEnsureNMTStateAction( const EnsureNMTState& ensureState )
 {
     CANMotorControllerAction action;
     
@@ -26,7 +26,7 @@ CANMotorControllerAction CANMotorControllerAction::CreateEnsureNMTStateAction( E
 }
 
 //------------------------------------------------------------------------------
-CANMotorControllerAction CANMotorControllerAction::CreateSDOFieldAction( SDOField& field )
+CANMotorControllerAction CANMotorControllerAction::CreateSDOFieldAction( const SDOField& field )
 {
     CANMotorControllerAction action;
     

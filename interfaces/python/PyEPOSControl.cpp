@@ -85,7 +85,7 @@ static int EPOSControlObject_init( EPOSControlObject *self,
         return -1;
     }
     
-    //gpChannel->ConfigureAllMotorControllersForPositionControl();
+    gpChannel->ConfigureAllMotorControllersForPositionControl();
     
     return 0;
 }

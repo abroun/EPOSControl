@@ -96,9 +96,27 @@ void CANChannel::OnSDOFieldReadComplete( U8 nodeId, U8* pData, U32 numBytes )
 //------------------------------------------------------------------------------
 void CANChannel::OnCANUpdate()
 {
-    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
-    {
+    S32 nodeId = mStartingNodeId;
+    S32 numNodesUpdated = 0;
+    bool bNewStartingNodeChosen = false;
+    
+    while ( numNodesUpdated < MAX_NUM_MOTOR_CONTROLLERS )
+    {    
         mMotorControllers[ nodeId ].Update();
+        
+        // There are only a limited number of slots available for sending
+        // SDO messages. By constantly changing the starting order for updates
+        // we ensure that all nodes get a fair chance of sending an SDO message
+        if ( mMotorControllers[ nodeId ].GetLastKnownNMTState() != eNMTS_Unknown
+            && nodeId != mStartingNodeId
+            && false == bNewStartingNodeChosen )
+        {
+            mStartingNodeId = nodeId;
+            bNewStartingNodeChosen = true;
+        }
+        
+        nodeId = (nodeId + 1)%MAX_NUM_MOTOR_CONTROLLERS;
+        numNodesUpdated++;
     }
 }
    
@@ -114,7 +132,6 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Profile Velocity", 0x6081, 0 ) );
     actionList[ actionIdx++ ].mSDOField.SetU32( 500 );
-    printf( "Num bytes = %i\n", actionList[ 1 ].mSDOField.mNumBytes );
     
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Transmit PDO 1 Parameter", 0x1800, 1 ) );
@@ -168,6 +185,8 @@ bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
         {
             mMotorControllers[ nodeId ].Init( this, nodeId );
         }
+        
+        mStartingNodeId = 0;
         
         mbInitialised = true;
     }

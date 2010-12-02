@@ -22,6 +22,6 @@ bool CFI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate 
 void CFI_DeinitCANChannel( CANChannel* pChannel );
 
 //------------------------------------------------------------------------------
-void CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field );
+bool CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field );
 
 #endif // CAN_FESTIVAL_INTERFACE_h

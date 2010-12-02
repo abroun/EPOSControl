@@ -45,6 +45,7 @@ class CANChannel
     public: static const U8 MAX_NUM_MOTOR_CONTROLLERS = 128;
     private: CANMotorController mMotorControllers[ MAX_NUM_MOTOR_CONTROLLERS ];
     private: bool mbInitialised;
+    private: U8 mStartingNodeId;   // See OnCANUpdate for explanation
 };
 
 #endif // CAN_CHANNEL_H

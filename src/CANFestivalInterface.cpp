@@ -93,6 +93,22 @@ void MasterHeartbeatError( CO_Data* pCANOpenData, U8 error )
 //------------------------------------------------------------------------------
 void MasterInitialisation( CO_Data* pCANOpenData )
 {
+    // Programmatically fill in the SDO addresses
+    for ( int i = 1; i <= 18; i++ )
+    {
+        UNS32 transmitCOBID = 0x600 + i;
+        UNS32 transmitCOBIDSize = sizeof(transmitCOBID);
+        UNS32 receiveCOBID = 0x580 + i;
+        UNS32 receiveCOBIDSize = sizeof(receiveCOBID);
+        UNS8 nodeId = (UNS8)i;
+        UNS32 nodeIdSize = sizeof(nodeId);
+        
+        UNS16 index = 0x1280 - 1 + i;
+        writeLocalDict( pCANOpenData, index, (UNS8)1, &transmitCOBID, &transmitCOBIDSize, 1 );
+        writeLocalDict( pCANOpenData, index, (UNS8)2, &receiveCOBID, &receiveCOBIDSize, 1 );
+        writeLocalDict( pCANOpenData, index, (UNS8)3, &nodeId, &nodeIdSize, 1 );
+    }
+    
     ChannelMapping* pMapping = FindMapping( pCANOpenData );
     if ( NULL != pMapping )
     {
@@ -186,12 +202,13 @@ void UpdateCallback( CO_Data* pCANOpenData, U32 id )
             gChannelMappings[ mappingIdx ].mpChannel->OnCANUpdate();
         }
     }
-    printf( "Update called\n" );
+    
+    fflush( NULL );
 }
 
 //------------------------------------------------------------------------------
 void ReadSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
-{
+{ 
     U32 abortCode;
     U8 data[ sizeof( SDOField::mData ) ];
     U32 numBytes = sizeof( data );    
@@ -204,7 +221,8 @@ void ReadSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
     
     if ( readResult != SDO_FINISHED )
     {
-        printf("\nResult : Failed in getting information for slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
+        fprintf( stderr, "\nResult : Failed in getting information for "
+            "slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
     }
     else
     {        
@@ -218,9 +236,7 @@ void ReadSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
 
 //------------------------------------------------------------------------------
 void WriteSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
-{
-    printf( "Write callback called\n" );
-    
+{   
     U32 abortCode;
     U8 writeResult = getWriteResultNetworkDict( pCANOpenData, nodeId, &abortCode );
     
@@ -229,7 +245,8 @@ void WriteSDOFieldCallback( CO_Data* pCANOpenData, U8 nodeId )
     
     if ( writeResult != SDO_FINISHED )
     {
-        printf("\nResult : Failed in getting information for slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
+        fprintf( stderr, "\nError : Failed in getting information "
+            "for slave %2.2x, AbortCode :%4.4x \n", nodeId, abortCode );
     }
     else
     {
@@ -280,7 +297,7 @@ bool CFI_InitCANFestivalInterface()
 
         // Start an update loop
         EnterMutex();
-        SetAlarm( NULL, 0, UpdateCallback, 0, 500000 );  // Trigger update to fire once every 0.5 seconds
+        SetAlarm( NULL, 0, UpdateCallback, 0, 10000 );  // Trigger update to fire once every 0.01 seconds
         LeaveMutex();
         
         gbCANFestivalStarted = true;
@@ -387,12 +404,9 @@ void CFI_DeinitCANChannel( CANChannel* pChannel )
 }
 
 //------------------------------------------------------------------------------
-void CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
-{
-    if ( 5 != nodeId )
-    {
-        return;
-    }
+bool CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
+{   
+    bool bFieldProcessed = false;
     
     ChannelMapping* pMapping = FindMapping( pChannel );
     if ( NULL != pMapping )
@@ -401,25 +415,21 @@ void CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
         {
             case SDOField::eT_Write:
             {
-                printf( "Processing write for node %i\n", nodeId );
-                printf( "%i %i b: %i a: %x\n", field.mIndex, field.mSubIndex, 
-                    field.mNumBytes, field.mData );
-                
-                writeNetworkDictCallBack( pMapping->mpCANOpenData,
+                U8 result = writeNetworkDictCallBack( pMapping->mpCANOpenData,
                     nodeId, field.mIndex, field.mSubIndex, 
                     field.mNumBytes, 0, field.mData,
                     WriteSDOFieldCallback );
                     
-                printf( "Write sent\n" );
+                bFieldProcessed = (result == 0);
                 break;
             }
             case SDOField::eT_Read:
-            {
-                printf( "Processing read\n" );
-                
-                readNetworkDictCallback( pMapping->mpCANOpenData,
+            {                
+                U8 result = readNetworkDictCallback( pMapping->mpCANOpenData,
                     nodeId, field.mIndex, field.mSubIndex, 
                     0, ReadSDOFieldCallback );
+                    
+                bFieldProcessed = (result == 0);
                 break;
             }
             default:
@@ -428,4 +438,6 @@ void CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
             }
         }
     }
+    
+    return bFieldProcessed;
 }

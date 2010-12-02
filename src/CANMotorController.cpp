@@ -15,8 +15,10 @@ void HandleSDOReadComplete( SDOField& field )
 {
     S32 curPosition = ((S32*)field.mData)[ 0 ];
     
-    
-    printf( "Angle from node %i read as %i\n", *((U8*)field.mpUserData), curPosition );
+    /*if ( *((U8*)field.mpUserData) == 5 )
+    {
+        printf( "Angle from node %i read as %i\n", *((U8*)field.mpUserData), curPosition );
+    }*/
 }
 
 //------------------------------------------------------------------------------
@@ -116,11 +118,10 @@ void CANMotorController::Update()
                     {
                         assert( NULL == mpActiveSDOField );
                         
-                        if ( mNodeId == 5 )
+                        if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
                         {
                             mpActiveSDOField = &mReadAction;
                             mCommunicationState =  eCS_WaitingForSDORead;
-                            CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction );
                         }
                         
                         break;
@@ -164,7 +165,7 @@ void CANMotorController::OnSDOFieldWriteComplete()
     assert( eCS_WaitingForSDOWrite == mCommunicationState );
     assert( mNumConfigurationActionsDone < mNumConfigurationActions );
     
-    mNumConfigurationActions++;
+    mNumConfigurationActionsDone++;
     mCommunicationState = eCS_Inactive;
     mpActiveSDOField = NULL;
 }
@@ -173,9 +174,9 @@ void CANMotorController::OnSDOFieldWriteComplete()
 void CANMotorController::OnSDOFieldReadComplete( U8* pData, U32 numBytes )
 {
     assert( eCS_WaitingForSDORead == mCommunicationState );
-    assert( mNumConfigurationActionsDone < mNumConfigurationActions );
     assert( mpActiveSDOField == &mReadAction );
     
+    memcpy( mReadAction.mData, pData, numBytes );
     mReadAction.mReadCallback( mReadAction );
     
     mCommunicationState = eCS_Inactive;
@@ -191,15 +192,7 @@ void CANMotorController::AddConfigurationAction( const CANMotorControllerAction&
         if ( mNumConfigurationActions < CONFIGURATION_ACTION_LIST_LENGTH )
         {
             mConfigurationActionList[ mNumConfigurationActions ] = action;
-            
-            if ( 1 == mNumConfigurationActions )
-            {
-                printf( "Got bytes = %i\n", mConfigurationActionList[ mNumConfigurationActions ].mSDOField.mNumBytes );
-            }
-            
             mNumConfigurationActions++;
-            
-            
         }
     }
 }
@@ -232,7 +225,7 @@ void CANMotorController::AddExtraAction( const CANMotorControllerAction& action 
 
 //------------------------------------------------------------------------------
 void CANMotorController::ProcessConfigurationAction()
-{
+{ 
     if ( mNumConfigurationActionsDone < mNumConfigurationActions )
     {
         CANMotorControllerAction& curAction = mConfigurationActionList[ mNumConfigurationActionsDone ];
@@ -262,11 +255,13 @@ void CANMotorController::ProcessConfigurationAction()
                     {
                         assert( NULL == mpActiveSDOField );
                         
-                        mpActiveSDOField = &curAction.mSDOField;
-                        mCommunicationState = 
-                            ( SDOField::eT_Read == curAction.mSDOField.mType 
-                            ? eCS_WaitingForSDORead : eCS_WaitingForSDOWrite );
-                        CFI_ProcessSDOField( mpOwner, mNodeId, curAction.mSDOField );
+                        if ( CFI_ProcessSDOField( mpOwner, mNodeId, curAction.mSDOField ) )
+                        {
+                            mpActiveSDOField = &curAction.mSDOField;
+                            mCommunicationState = 
+                                ( SDOField::eT_Read == curAction.mSDOField.mType 
+                                ? eCS_WaitingForSDORead : eCS_WaitingForSDOWrite );
+                        }
                         
                         break;
                     }

@@ -169,6 +169,24 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
         }
     }
 }
+
+//------------------------------------------------------------------------------
+void CANChannel::GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut )
+{
+    S32 numAngles = 0;
+    
+    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+    {
+        if ( mMotorControllers[ nodeId ].IsAngleValid() )
+        {
+            pAngleBuffer[ numAngles ].mNodeId = nodeId;
+            pAngleBuffer[ numAngles ].mAngle = mMotorControllers[ nodeId ].GetAngle();
+            numAngles++;
+        }
+    }
+    
+    *pBufferSizeOut = numAngles;
+}
    
 //------------------------------------------------------------------------------
 bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )

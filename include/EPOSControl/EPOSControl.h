@@ -19,6 +19,10 @@ void EPOS_DeinitLibrary();
 CANChannel* EPOS_OpenCANChannel( const char* canDevice, eBaudRate baudRate );
 void EPOS_CloseCANChannel( CANChannel* pChannel );
 
+//------------------------------------------------------------------------------
+void EPOS_EnterCANMutex();
+void EPOS_LeaveCANMutex();
+
 #endif // EPOS_CONTROL_H
 
 

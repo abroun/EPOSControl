@@ -74,6 +74,9 @@ class CANMotorController
     public: void OnSDOFieldWriteComplete();
     public: void OnSDOFieldReadComplete( U8* pData, U32 numBytes );
   
+    public: bool IsAngleValid() const { return mbInitialised && mbAngleValid; }
+    public: S32 GetAngle() const { return mAngle; }
+    
     //--------------------------------------------------------------------------
     // The communication state machine is used to keep track of communications
     // with the motor controller, trying to ensure that that the motor 
@@ -126,6 +129,9 @@ class CANMotorController
     private: void ProcessExtraAction();
     
     //--------------------------------------------------------------------------
+    private: static void HandleSDOReadComplete( SDOField& field );
+    
+    //--------------------------------------------------------------------------
     public: static const S32 CONFIGURATION_ACTION_LIST_LENGTH = 64;
     public: static const S32 EXTRA_ACTION_LIST_LENGTH = 16;
     
@@ -145,6 +151,8 @@ class CANMotorController
     private: SDOField* mpActiveSDOField;
     private: SDOField mReadAction;
     private: eState mState;
+    private: bool mbAngleValid;
+    private: S32 mAngle;
 };
 
 #endif // CAN_MOTOR_CONTROLLER_H

@@ -25,21 +25,28 @@ typedef struct
 // returned in a dictionary where the keys are the index of the CAN channel
 static PyObject* getJointAngles( PyObject* pSelf, PyObject* args )
 {
-/*    
-    // Create a copy to output
-    PyObject* pOutputArray = PyArray_NewCopy( pImgArray, NPY_CORDER );
+    // Get the information from the EPOS control library
+    EPOS_EnterCANMutex();
     
-    // Process the data
-    unsigned char* pData = (unsigned char*)PyArray_DATA( pOutputArray );
-    int yStride = PyArray_STRIDE( pOutputArray, 0 );
-    int xStride = PyArray_STRIDE( pOutputArray, 1 );
-    int height = PyArray_DIM( pOutputArray, 0 );
-    int width = PyArray_DIM( pOutputArray, 1 );
-     
-    int numBlobs = SegmentByteArray( pData, width, height, xStride, yStride, eCT_Connect8 );
-    */
-    // Return the processed data
-    return Py_BuildValue( "i", 4 );
+    AngleData angleData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
+    S32 numAngles = 0;
+    gpChannel->GetMotorAngles( angleData, &numAngles );
+    
+    EPOS_LeaveCANMutex();
+    
+    // Build the information into dictionaries
+    PyObject* pNodeDict = PyDict_New();
+    for ( S32 angleIdx = 0; angleIdx < numAngles; angleIdx++ )
+    {
+        PyObject* pKey = PyString_FromFormat( "%i", angleData[ angleIdx ].mNodeId );
+        PyObject* pValue = PyInt_FromLong( angleData[ angleIdx ].mAngle );
+        PyDict_SetItem( pNodeDict, pKey, pValue );
+    }
+    
+    PyObject* pChannelDict = PyDict_New();
+    PyDict_SetItem( pChannelDict, PyString_FromString( "2" ), pNodeDict );
+    
+    return pChannelDict;
 }
 
 //------------------------------------------------------------------------------

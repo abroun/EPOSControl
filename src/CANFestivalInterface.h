@@ -24,4 +24,8 @@ void CFI_DeinitCANChannel( CANChannel* pChannel );
 //------------------------------------------------------------------------------
 bool CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field );
 
+//------------------------------------------------------------------------------
+void CFI_EnterMutex();
+void CFI_LeaveMutex();
+
 #endif // CAN_FESTIVAL_INTERFACE_h

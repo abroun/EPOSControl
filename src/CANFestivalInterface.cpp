@@ -441,3 +441,15 @@ bool CFI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field )
     
     return bFieldProcessed;
 }
+
+//------------------------------------------------------------------------------
+void CFI_EnterMutex()
+{
+    EnterMutex();
+}
+
+//------------------------------------------------------------------------------
+void CFI_LeaveMutex()
+{
+    LeaveMutex();
+}

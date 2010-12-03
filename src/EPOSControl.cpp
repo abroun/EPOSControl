@@ -84,3 +84,15 @@ void EPOS_CloseCANChannel( CANChannel* pChannel )
         }
     }
 }
+
+//------------------------------------------------------------------------------
+void EPOS_EnterCANMutex()
+{
+    CFI_EnterMutex();
+}
+
+//------------------------------------------------------------------------------
+void EPOS_LeaveCANMutex()
+{
+    CFI_LeaveMutex();
+}

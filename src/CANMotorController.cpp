@@ -11,17 +11,6 @@
 #include "CANFestivalInterface.h"
 
 //------------------------------------------------------------------------------
-void HandleSDOReadComplete( SDOField& field )
-{
-    S32 curPosition = ((S32*)field.mData)[ 0 ];
-    
-    /*if ( *((U8*)field.mpUserData) == 5 )
-    {
-        printf( "Angle from node %i read as %i\n", *((U8*)field.mpUserData), curPosition );
-    }*/
-}
-
-//------------------------------------------------------------------------------
 CANMotorController::CANMotorController()
     : mbInitialised( false )
 {
@@ -53,9 +42,10 @@ bool CANMotorController::Init( CANChannel* pOwner, U8 nodeId )
         mpActiveSDOField = NULL;
         mState = eS_Inactive;
         mbPresent = false;
+        mbAngleValid = false;
         
         mReadAction = SDOField( SDOField::eT_Read, 
-            "Position Actual", 0x6064, 0, HandleSDOReadComplete, &mNodeId );
+            "Position Actual", 0x6064, 0, HandleSDOReadComplete, this );
         
         mbInitialised = true;
     }
@@ -289,6 +279,20 @@ void CANMotorController::ProcessConfigurationAction()
 //------------------------------------------------------------------------------
 void CANMotorController::ProcessExtraAction()
 {
+}
+
+//------------------------------------------------------------------------------
+void CANMotorController::HandleSDOReadComplete( SDOField& field )
+{
+    CANMotorController* pThis = (CANMotorController*)field.mpUserData;
+    pThis->mAngle = *((S32*)field.mData);
+    pThis->mbAngleValid = true;
+    
+    
+    /*if ( *((U8*)field.mpUserData) == 5 )
+    {
+        printf( "Angle from node %i read as %i\n", *((U8*)field.mpUserData), curPosition );
+    }*/
 }
 
 //------------------------------------------------------------------------------

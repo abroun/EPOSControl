@@ -123,7 +123,7 @@ void CANChannel::OnCANUpdate()
 //------------------------------------------------------------------------------
 void CANChannel::ConfigureAllMotorControllersForPositionControl()
 {
-    CANMotorControllerAction actionList[ 8 ];
+    CANMotorControllerAction actionList[ 10 ];
     S32 actionIdx = 0;
     
     actionList[ actionIdx++ ] = CANMotorControllerAction::CreateEnsureNMTStateAction(
@@ -157,6 +157,14 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
         SDOField( SDOField::eT_Write, "Transmit PDO 1 Map - Num Items", 0x1A00, 0 ) );
     actionList[ actionIdx++ ].mSDOField.SetU8( 1 );    // Reenable PDO
     
+    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
+        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
+    actionList[ actionIdx++ ].mSDOField.SetU16( 0x0006 );    // Shutdown
+    
+    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
+        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
+    actionList[ actionIdx++ ].mSDOField.SetU16( 0x000F );    // Switch On
+    
     S32 numActions = actionIdx;
     assert( ARRAY_LENGTH( actionList ) == numActions );
     
@@ -186,6 +194,15 @@ void CANChannel::GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut )
     }
     
     *pBufferSizeOut = numAngles;
+}
+
+//------------------------------------------------------------------------------
+void CANChannel::SetMotorAngle( U8 nodeId, S32 angle )
+{
+    if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
+    {
+         mMotorControllers[ nodeId ].SetDesiredAngle( angle );
+    }
 }
    
 //------------------------------------------------------------------------------

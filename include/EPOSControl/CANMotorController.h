@@ -76,6 +76,7 @@ class CANMotorController
   
     public: bool IsAngleValid() const { return mbInitialised && mbAngleValid; }
     public: S32 GetAngle() const { return mAngle; }
+    public: void SetDesiredAngle( S32 desiredAngle );
     
     //--------------------------------------------------------------------------
     // The communication state machine is used to keep track of communications
@@ -99,6 +100,8 @@ class CANMotorController
     //--------------------------------------------------------------------------
     // Adds an action to the list of extra actions for the motor controller
     public: void AddExtraAction( const CANMotorControllerAction& action );
+    
+    private: void RemoveFirstExtraAction();
     
 //     //--------------------------------------------------------------------------
 //     // This routine is called by the owning CANChannel when an SDO read from
@@ -127,6 +130,8 @@ class CANMotorController
     //--------------------------------------------------------------------------
     // Helper routine for internal state
     private: void ProcessExtraAction();
+    
+    private: bool ProcessAction( CANMotorControllerAction& action );
     
     //--------------------------------------------------------------------------
     private: static void HandleSDOReadComplete( SDOField& field );

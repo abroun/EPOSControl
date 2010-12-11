@@ -52,6 +52,8 @@ class CANChannel
     // from their EPOS motor controller
     public: void GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut );
     
+    public: void SetMotorAngle( U8 nodeId, S32 angle );
+    
     //--------------------------------------------------------------------------
     public: static const U8 ALL_MOTOR_CONTROLLERS = 0;
     public: static const U8 MAX_NUM_MOTOR_CONTROLLERS = 128;

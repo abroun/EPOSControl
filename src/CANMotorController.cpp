@@ -91,13 +91,17 @@ void CANMotorController::Update()
                 ProcessConfigurationAction();
                 if ( mNumConfigurationActionsDone >= mNumConfigurationActions )
                 {
-                    mState = eS_PollingForPosition;
+                    mState = eS_Inactive;
                 }
                 break;
             }
             case eS_ProcessingExtraActions:
             {
                 ProcessExtraAction();
+                if ( mNumExtraActions <= 0 )
+                {
+                    mState = eS_Inactive;
+                }
                 break;
             }
             case eS_PollingForPosition:
@@ -108,10 +112,22 @@ void CANMotorController::Update()
                     {
                         assert( NULL == mpActiveSDOField );
                         
-                        if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                        if ( mNumConfigurationActions > mNumConfigurationActionsDone )
                         {
-                            mpActiveSDOField = &mReadAction;
-                            mCommunicationState =  eCS_WaitingForSDORead;
+                            mState = eS_ProcessingConfigurationActions;
+                        }
+                        else if ( mNumExtraActions > 0 )
+                        {
+                            mState = eS_ProcessingExtraActions;
+                        }
+                        else 
+                        {
+                            // Nothing else to do so poll
+                            if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                            {
+                                mpActiveSDOField = &mReadAction;
+                                mCommunicationState =  eCS_WaitingForSDORead;
+                            }
                         }
                         
                         break;
@@ -153,9 +169,21 @@ void CANMotorController::TellAboutNMTState( eNMT_State state )
 void CANMotorController::OnSDOFieldWriteComplete()
 {
     assert( eCS_WaitingForSDOWrite == mCommunicationState );
-    assert( mNumConfigurationActionsDone < mNumConfigurationActions );
     
-    mNumConfigurationActionsDone++;
+    if ( eS_ProcessingConfigurationActions == mState )
+    {
+        assert( mNumConfigurationActionsDone < mNumConfigurationActions );
+        mNumConfigurationActionsDone++;
+    }
+    else if ( eS_ProcessingExtraActions == mState )
+    {
+        RemoveFirstExtraAction();
+    }
+    else
+    {
+        assert( false && "Motor controller in unexpected state" );
+    }
+    
     mCommunicationState = eCS_Inactive;
     mpActiveSDOField = NULL;
 }
@@ -171,6 +199,23 @@ void CANMotorController::OnSDOFieldReadComplete( U8* pData, U32 numBytes )
     
     mCommunicationState = eCS_Inactive;
     mpActiveSDOField = NULL;
+}
+
+//------------------------------------------------------------------------------
+void CANMotorController::SetDesiredAngle( S32 desiredAngle )
+{    
+    CANMotorControllerAction action =
+        CANMotorControllerAction::CreateSDOFieldAction(
+            SDOField( SDOField::eT_Write, "Target Position", 0x607A, 0 ) );
+    action.mSDOField.SetS32( desiredAngle );
+    
+    AddExtraAction( action );
+    
+    action = CANMotorControllerAction::CreateSDOFieldAction(
+        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
+    action.mSDOField.SetU16( 0x001F );    // Start positioning
+    
+    AddExtraAction( action );
 }
 
 //------------------------------------------------------------------------------
@@ -204,7 +249,7 @@ void CANMotorController::AddExtraAction( const CANMotorControllerAction& action 
 {
     if ( mbInitialised )
     {
-        assert( mNumExtraActions < EXTRA_ACTION_LIST_LENGTH );
+        //assert( mNumExtraActions < EXTRA_ACTION_LIST_LENGTH );
         if ( mNumExtraActions < EXTRA_ACTION_LIST_LENGTH )
         {
             mExtraActionList[ mNumExtraActions ] = action;
@@ -214,64 +259,29 @@ void CANMotorController::AddExtraAction( const CANMotorControllerAction& action 
 }
 
 //------------------------------------------------------------------------------
+void CANMotorController::RemoveFirstExtraAction()
+{
+    if ( mbInitialised 
+        && mNumExtraActions > 0 )
+    {
+        // Very inefficient update of the queue by copying all fields forward
+        // one space.
+        memcpy( &mExtraActionList[ 0 ], &mExtraActionList[ 1 ], 
+            sizeof( CANMotorControllerAction )*(mNumExtraActions-1) );
+        mNumExtraActions--;
+    }
+}
+
+//------------------------------------------------------------------------------
 void CANMotorController::ProcessConfigurationAction()
 { 
     if ( mNumConfigurationActionsDone < mNumConfigurationActions )
     {
         CANMotorControllerAction& curAction = mConfigurationActionList[ mNumConfigurationActionsDone ];
-        switch ( curAction.mType )
+        bool bActionComplete = ProcessAction( curAction );
+        if ( bActionComplete )
         {
-            case CANMotorControllerAction::eT_EnsureNMTState:
-            {
-                if ( mLastKnownNMTState == curAction.mEnsureNMTState.mDesiredState )
-                {
-                    // We've got to the desired state
-                    mNumConfigurationActionsDone++;
-                }
-                else
-                { 
-                    if ( EnsureNMTState::eT_Active == curAction.mEnsureNMTState.mType )
-                    {
-                        assert( false && "Active state change not implemented yet" );
-                    }
-                }
-                break;
-            }
-            case CANMotorControllerAction::eT_SDOField:
-            {
-                switch ( mCommunicationState )
-                {
-                    case eCS_Inactive:
-                    {
-                        assert( NULL == mpActiveSDOField );
-                        
-                        if ( CFI_ProcessSDOField( mpOwner, mNodeId, curAction.mSDOField ) )
-                        {
-                            mpActiveSDOField = &curAction.mSDOField;
-                            mCommunicationState = 
-                                ( SDOField::eT_Read == curAction.mSDOField.mType 
-                                ? eCS_WaitingForSDORead : eCS_WaitingForSDOWrite );
-                        }
-                        
-                        break;
-                    }
-                    case eCS_WaitingForSDORead:
-                    case eCS_WaitingForSDOWrite:
-                    {
-                        // Nothing to do
-                        break;
-                    }
-                    default:
-                    {
-                        assert( false && "Unhandled communication state" );
-                    }
-                }
-                break;
-            }
-            default:
-            {
-                assert( false && "Unhandled CAN motor controller action type" );
-            }
+            mNumConfigurationActionsDone++;
         }
     }
 }
@@ -279,6 +289,78 @@ void CANMotorController::ProcessConfigurationAction()
 //------------------------------------------------------------------------------
 void CANMotorController::ProcessExtraAction()
 {
+    if ( mNumExtraActions > 0 )
+    {
+        CANMotorControllerAction& curAction = mExtraActionList[ 0 ];
+        bool bActionComplete = ProcessAction( curAction );
+        if ( bActionComplete )
+        {
+            RemoveFirstExtraAction();
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+bool CANMotorController::ProcessAction( CANMotorControllerAction& action )
+{
+    bool bActionComplete = false;
+    
+    switch ( action.mType )
+    {
+        case CANMotorControllerAction::eT_EnsureNMTState:
+        {
+            if ( mLastKnownNMTState == action.mEnsureNMTState.mDesiredState )
+            {
+                // We've got to the desired state
+                bActionComplete = true;
+            }
+            else
+            { 
+                if ( EnsureNMTState::eT_Active == action.mEnsureNMTState.mType )
+                {
+                    assert( false && "Active state change not implemented yet" );
+                }
+            }
+            break;
+        }
+        case CANMotorControllerAction::eT_SDOField:
+        {
+            switch ( mCommunicationState )
+            {
+                case eCS_Inactive:
+                {
+                    assert( NULL == mpActiveSDOField );
+                    
+                    if ( CFI_ProcessSDOField( mpOwner, mNodeId, action.mSDOField ) )
+                    {
+                        mpActiveSDOField = &action.mSDOField;
+                        mCommunicationState = 
+                            ( SDOField::eT_Read == action.mSDOField.mType 
+                            ? eCS_WaitingForSDORead : eCS_WaitingForSDOWrite );
+                    }
+                    
+                    break;
+                }
+                case eCS_WaitingForSDORead:
+                case eCS_WaitingForSDOWrite:
+                {
+                    // Nothing to do
+                    break;
+                }
+                default:
+                {
+                    assert( false && "Unhandled communication state" );
+                }
+            }
+            break;
+        }
+        default:
+        {
+            assert( false && "Unhandled CAN motor controller action type" );
+        }
+    }
+    
+    return bActionComplete;
 }
 
 //------------------------------------------------------------------------------

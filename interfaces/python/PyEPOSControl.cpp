@@ -9,6 +9,9 @@
 #include <math.h>
 #include "EPOSControl/EPOSControl.h"
 
+#define GP_CHANNEL_IDX 2
+#define GP_CHANNEL_IDX_STR "2"
+
 //------------------------------------------------------------------------------
 static CANChannel* gpChannel = NULL;
 
@@ -44,9 +47,67 @@ static PyObject* getJointAngles( PyObject* pSelf, PyObject* args )
     }
     
     PyObject* pChannelDict = PyDict_New();
-    PyDict_SetItem( pChannelDict, PyString_FromString( "2" ), pNodeDict );
+    PyDict_SetItem( pChannelDict, PyString_FromString( GP_CHANNEL_IDX_STR ), pNodeDict );
     
     return pChannelDict;
+}
+
+//------------------------------------------------------------------------------
+// Sets the joint angles of a number of the motor controllers on the CAN bus.
+// Joint angles are passed in a list of tuples of the form
+//      ( channelIdx, nodeIdx, position )
+static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
+{
+    PyObject* pList = NULL;
+    if ( !PyArg_ParseTuple( args, "O", &pList )
+        || !PyList_Check( pList ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+    
+    EPOS_EnterCANMutex();
+    
+    Py_ssize_t listLength = PyList_Size( pList );
+    for ( Py_ssize_t listIdx = 0; listIdx < listLength; listIdx++ )
+    {
+        PyObject* pInputTuple = PyList_GetItem( pList, listIdx );
+        if ( !PyTuple_Check( pInputTuple ) 
+            || PyTuple_Size( pInputTuple ) < 3 )
+        {
+            PyErr_SetString( PyExc_Exception, "Found list item which isn't a tuple with 3 items" );
+            EPOS_LeaveCANMutex();
+            return NULL;
+        }
+        
+        S32 channelIdx;
+        S32 nodeId;
+        S32 angle;
+        
+        bool bDataInvalid = false;
+        channelIdx = PyInt_AsLong( PyTuple_GetItem( pInputTuple, 0 ) );
+        bDataInvalid = ( bDataInvalid || ( -1 == channelIdx && PyErr_Occurred() ) );
+        nodeId = PyInt_AsLong( PyTuple_GetItem( pInputTuple, 1 ) );
+        bDataInvalid = ( bDataInvalid || ( -1 == nodeId && PyErr_Occurred() ) );
+        angle = PyInt_AsLong( PyTuple_GetItem( pInputTuple, 2 ) );
+        bDataInvalid = ( bDataInvalid || ( -1 == angle && PyErr_Occurred() ) );
+        
+        if ( bDataInvalid )
+        {
+            PyErr_SetString( PyExc_Exception, "Invalid data in tuple" );
+            EPOS_LeaveCANMutex();
+            return NULL;
+        }
+        
+        if ( GP_CHANNEL_IDX == channelIdx )
+        {
+            gpChannel->SetMotorAngle( (U8)nodeId, angle );
+        }
+    }
+    
+    EPOS_LeaveCANMutex();
+    
+    Py_RETURN_NONE;
 }
 
 //------------------------------------------------------------------------------
@@ -101,6 +162,7 @@ static int EPOSControlObject_init( EPOSControlObject *self,
 static PyMethodDef EPOSControlObjectMethods[] = 
 {
     { "getJointAngles", getJointAngles, METH_VARARGS, "Get the motor controller joint angles" },
+    { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
     {NULL}  /* Sentinel */
 };
 

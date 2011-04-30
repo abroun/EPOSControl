@@ -43,6 +43,7 @@ bool CANMotorController::Init( CANChannel* pOwner, U8 nodeId )
         mState = eS_Inactive;
         mbPresent = false;
         mbAngleValid = false;
+        mbDesiredAngleValid = false;
         
         mReadAction = SDOField( SDOField::eT_Read, 
             "Position Actual", 0x6064, 0, HandleSDOReadComplete, this );
@@ -63,10 +64,41 @@ void CANMotorController::Deinit()
 }
 
 //------------------------------------------------------------------------------
-void CANMotorController::Update()
+void CANMotorController::Update( S32 frameIdx )
 {
     if ( mbPresent )
     {
+        /*if ( GetNodeId() == 15 )
+        {
+            switch ( mState )
+            {
+                case eS_Inactive:
+                {
+                    printf( "Node %i in eS_Inactive\n", GetNodeId() );
+                    break;
+                }
+                case eS_ProcessingConfigurationActions:
+                {
+                    printf( "Node %i in eS_ProcessingConfigurationActions\n", GetNodeId() );
+                    break;
+                }
+                case eS_ProcessingExtraActions:
+                {
+                    printf( "Node %i in eS_ProcessingExtraActions\n", GetNodeId() );
+                    break;
+                }
+                case eS_PollingForPosition:
+                {
+                    printf( "Node %i in eS_PollingForPosition\n", GetNodeId() );
+                    break;
+                }
+                default:
+                {
+                    assert( false && "Unhandled state encountered" );
+                }
+            }
+        }*/    
+        
         switch ( mState )
         {
             case eS_Inactive:
@@ -100,6 +132,8 @@ void CANMotorController::Update()
                 ProcessExtraAction();
                 if ( mNumExtraActions <= 0 )
                 {
+                    printf( "Node %i finished with extra actions after %i frames\n", 
+                            GetNodeId(), frameIdx - mExtraFrameIdx );
                     mState = eS_Inactive;
                 }
                 break;
@@ -123,10 +157,15 @@ void CANMotorController::Update()
                         else 
                         {
                             // Nothing else to do so poll
-                            if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                            if ( !mbAngleValid
+                                || ( frameIdx - mLastAnglePollFrameIdx > 1000 ) )    // Poll at 1Hz TODO: Make this nicer
                             {
-                                mpActiveSDOField = &mReadAction;
-                                mCommunicationState =  eCS_WaitingForSDORead;
+                                if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                                {
+                                    mpActiveSDOField = &mReadAction;
+                                    mCommunicationState =  eCS_WaitingForSDORead;
+                                    mLastAnglePollFrameIdx = frameIdx;
+                                }
                             }
                         }
                         
@@ -166,7 +205,7 @@ void CANMotorController::TellAboutNMTState( eNMT_State state )
 }
 
 //------------------------------------------------------------------------------
-void CANMotorController::OnSDOFieldWriteComplete()
+void CANMotorController::OnSDOFieldWriteComplete( S32 frameIdx )
 {
     assert( eCS_WaitingForSDOWrite == mCommunicationState );
     
@@ -177,6 +216,7 @@ void CANMotorController::OnSDOFieldWriteComplete()
     }
     else if ( eS_ProcessingExtraActions == mState )
     {
+        printf( "SDO Write took %i frames\n", frameIdx - mSDOWriteFrameIdx );
         RemoveFirstExtraAction();
     }
     else
@@ -202,8 +242,19 @@ void CANMotorController::OnSDOFieldReadComplete( U8* pData, U32 numBytes )
 }
 
 //------------------------------------------------------------------------------
-void CANMotorController::SetDesiredAngle( S32 desiredAngle )
-{    
+void CANMotorController::SetDesiredAngle( S32 desiredAngle, S32 frameIdx )
+{
+    if ( mbDesiredAngleValid && mDesiredAngle == desiredAngle )
+    {
+       return;  // Already set
+    }
+    
+    if ( mNumExtraActions > 0 )
+    {
+        // TODO: Fix this hack
+        return;
+    }
+    
     CANMotorControllerAction action =
         CANMotorControllerAction::CreateSDOFieldAction(
             SDOField( SDOField::eT_Write, "Target Position", 0x607A, 0 ) );
@@ -216,6 +267,12 @@ void CANMotorController::SetDesiredAngle( S32 desiredAngle )
     action.mSDOField.SetU16( 0x001F );    // Start positioning
     
     AddExtraAction( action );
+    
+    mbDesiredAngleValid = true;
+    mDesiredAngle = desiredAngle;
+    mExtraFrameIdx = frameIdx;
+    
+    printf( "Added extra action for node %i to go to %i\n", GetNodeId(), desiredAngle );
 }
 
 //------------------------------------------------------------------------------
@@ -255,6 +312,10 @@ void CANMotorController::AddExtraAction( const CANMotorControllerAction& action 
             mExtraActionList[ mNumExtraActions ] = action;
             mNumExtraActions++;
         }
+        else
+        {
+            printf( "Warning: Action lost for node %i\n", GetNodeId() );
+        }
     }
 }
 
@@ -292,16 +353,17 @@ void CANMotorController::ProcessExtraAction()
     if ( mNumExtraActions > 0 )
     {
         CANMotorControllerAction& curAction = mExtraActionList[ 0 ];
-        bool bActionComplete = ProcessAction( curAction );
+        bool bActionComplete = ProcessAction( curAction, true );
         if ( bActionComplete )
         {
+            //printf( "Sent extra action for node %i\n", GetNodeId() );
             RemoveFirstExtraAction();
         }
     }
 }
 
 //------------------------------------------------------------------------------
-bool CANMotorController::ProcessAction( CANMotorControllerAction& action )
+bool CANMotorController::ProcessAction( CANMotorControllerAction& action, bool bDebug )
 {
     bool bActionComplete = false;
     
@@ -337,6 +399,15 @@ bool CANMotorController::ProcessAction( CANMotorControllerAction& action )
                         mCommunicationState = 
                             ( SDOField::eT_Read == action.mSDOField.mType 
                             ? eCS_WaitingForSDORead : eCS_WaitingForSDOWrite );
+                            
+                        if ( eCS_WaitingForSDOWrite == mCommunicationState )
+                        {
+                            mSDOWriteFrameIdx = mpOwner->GetFrameIdx();
+                        }
+                    }
+                    else if ( bDebug )
+                    {
+                        printf( "Couldn't send action\n" );
                     }
                     
                     break;
@@ -370,10 +441,9 @@ void CANMotorController::HandleSDOReadComplete( SDOField& field )
     pThis->mAngle = *((S32*)field.mData);
     pThis->mbAngleValid = true;
     
-    
-    /*if ( *((U8*)field.mpUserData) == 5 )
+    /*if ( pThis->GetNodeId() == 15 )
     {
-        printf( "Angle from node %i read as %i\n", *((U8*)field.mpUserData), curPosition );
+        printf( "Angle from node %i read as %i\n", pThis->GetNodeId(), pThis->mAngle );
     }*/
 }
 

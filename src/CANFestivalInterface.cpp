@@ -13,7 +13,8 @@
 #include "ObjDict/EPOSObjectDict_2.h"
 
 //------------------------------------------------------------------------------
-static const char* CAN_LIBRARY_PATH = "libcanfestival_can_peak_linux.so";
+//static const char* CAN_LIBRARY_PATH = "libcanfestival_can_peak_linux.so";
+static const char* CAN_LIBRARY_PATH = "libcanfestival_can_canusb.so";
 
 //------------------------------------------------------------------------------
 struct ChannelMapping
@@ -297,7 +298,8 @@ bool CFI_InitCANFestivalInterface()
 
         // Start an update loop
         EnterMutex();
-        SetAlarm( NULL, 0, UpdateCallback, 0, 10000 );  // Trigger update to fire once every 0.01 seconds
+        SetAlarm( NULL, 0, UpdateCallback, 0, 1000 );  // Trigger update to fire once every 0.001 seconds
+        //SetAlarm( NULL, 0, UpdateCallback, 0, 1000000 );  // Trigger update to fire once every 1 seconds
         LeaveMutex();
         
         gbCANFestivalStarted = true;

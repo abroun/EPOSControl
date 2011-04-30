@@ -60,6 +60,9 @@ class CANChannel
     private: CANMotorController mMotorControllers[ MAX_NUM_MOTOR_CONTROLLERS ];
     private: bool mbInitialised;
     private: U8 mStartingNodeId;   // See OnCANUpdate for explanation
+    
+    private: S32 mFrameIdx;
+    public: S32 GetFrameIdx() const { return mFrameIdx; }
 };
 
 #endif // CAN_CHANNEL_H

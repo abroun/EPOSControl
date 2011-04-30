@@ -76,7 +76,7 @@ void CANChannel::OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg )
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostSlaveBootup( U8 nodeId )
 {
-    printf( "PostSlaveBootup for node %i called\n", nodeId );
+    printf( "PostSlaveBootup for node %i called at frame %i\n", nodeId, mFrameIdx );
     
     mMotorControllers[ nodeId ].TellAboutNMTState( eNMTS_PreOperational );
 }
@@ -84,7 +84,7 @@ void CANChannel::OnCANOpenPostSlaveBootup( U8 nodeId )
 //------------------------------------------------------------------------------
 void CANChannel::OnSDOFieldWriteComplete( U8 nodeId )
 {
-    mMotorControllers[ nodeId ].OnSDOFieldWriteComplete();
+    mMotorControllers[ nodeId ].OnSDOFieldWriteComplete( mFrameIdx );
 }
 
 //------------------------------------------------------------------------------
@@ -100,9 +100,12 @@ void CANChannel::OnCANUpdate()
     S32 numNodesUpdated = 0;
     bool bNewStartingNodeChosen = false;
     
+    //printf( "Update called\n" );
+    mFrameIdx++;
+    
     while ( numNodesUpdated < MAX_NUM_MOTOR_CONTROLLERS )
     {    
-        mMotorControllers[ nodeId ].Update();
+        mMotorControllers[ nodeId ].Update( mFrameIdx );
         
         // There are only a limited number of slots available for sending
         // SDO messages. By constantly changing the starting order for updates
@@ -201,7 +204,7 @@ void CANChannel::SetMotorAngle( U8 nodeId, S32 angle )
 {
     if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
     {
-         mMotorControllers[ nodeId ].SetDesiredAngle( angle );
+         mMotorControllers[ nodeId ].SetDesiredAngle( angle, mFrameIdx );
     }
 }
    
@@ -222,6 +225,7 @@ bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
         }
         
         mStartingNodeId = 0;
+        mFrameIdx = 0;
         
         mbInitialised = true;
     }

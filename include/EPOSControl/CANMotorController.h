@@ -63,7 +63,7 @@ class CANMotorController
     public: bool IsPresent() const { return mbPresent; }
     
     //--------------------------------------------------------------------------
-    public: void Update();
+    public: void Update( S32 frameIdx );
     
     //--------------------------------------------------------------------------
     // Lets the CANMotorController object know that the real world motor 
@@ -71,12 +71,12 @@ class CANMotorController
     public: void TellAboutNMTState( eNMT_State state );
     public: eNMT_State GetLastKnownNMTState() const { return mLastKnownNMTState; }
   
-    public: void OnSDOFieldWriteComplete();
+    public: void OnSDOFieldWriteComplete( S32 frameIdx );
     public: void OnSDOFieldReadComplete( U8* pData, U32 numBytes );
   
     public: bool IsAngleValid() const { return mbInitialised && mbAngleValid; }
     public: S32 GetAngle() const { return mAngle; }
-    public: void SetDesiredAngle( S32 desiredAngle );
+    public: void SetDesiredAngle( S32 desiredAngle, S32 frameIdx );
     
     //--------------------------------------------------------------------------
     // The communication state machine is used to keep track of communications
@@ -131,7 +131,7 @@ class CANMotorController
     // Helper routine for internal state
     private: void ProcessExtraAction();
     
-    private: bool ProcessAction( CANMotorControllerAction& action );
+    private: bool ProcessAction( CANMotorControllerAction& action, bool bDebug=false );
     
     //--------------------------------------------------------------------------
     private: static void HandleSDOReadComplete( SDOField& field );
@@ -158,6 +158,12 @@ class CANMotorController
     private: eState mState;
     private: bool mbAngleValid;
     private: S32 mAngle;
+    private: S32 mLastAnglePollFrameIdx;
+    
+    private: bool mbDesiredAngleValid;
+    private: S32 mDesiredAngle;
+    private: S32 mExtraFrameIdx;
+    private: S32 mSDOWriteFrameIdx;
 };
 
 #endif // CAN_MOTOR_CONTROLLER_H

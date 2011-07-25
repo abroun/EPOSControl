@@ -111,6 +111,30 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
 }
 
 //------------------------------------------------------------------------------
+// Tries to bring a halted EPOS node back to life
+static PyObject* sendFaultReset( PyObject* pSelf, PyObject* args )
+{
+    S32 channelIdx;
+    S32 nodeId;
+    if ( !PyArg_ParseTuple( args, "ii", &channelIdx, &nodeId ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+    
+    EPOS_EnterCANMutex();
+    
+    if ( GP_CHANNEL_IDX == channelIdx )
+    {
+        gpChannel->SendFaultReset( (U8)nodeId );
+    }
+    
+    EPOS_LeaveCANMutex();
+    
+    Py_RETURN_NONE;
+}
+
+//------------------------------------------------------------------------------
 static void EPOSControlObject_dealloc( EPOSControlObject* self )
 {
     // Shut down the EPOSControl library
@@ -163,6 +187,7 @@ static PyMethodDef EPOSControlObjectMethods[] =
 {
     { "getJointAngles", getJointAngles, METH_VARARGS, "Get the motor controller joint angles" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
+    { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
     {NULL}  /* Sentinel */
 };
 

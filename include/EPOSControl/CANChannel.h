@@ -53,6 +53,10 @@ class CANChannel
     public: void GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut );
     
     public: void SetMotorAngle( U8 nodeId, S32 angle );
+    public: void SendFaultReset( U8 nodeId );
+    
+    //--------------------------------------------------------------------------
+    public: static const char* GetEposErrorMessage( U16 errCode, U8 errReg );
     
     //--------------------------------------------------------------------------
     public: static const U8 ALL_MOTOR_CONTROLLERS = 0;

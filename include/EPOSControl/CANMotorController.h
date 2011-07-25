@@ -78,6 +78,8 @@ class CANMotorController
     public: S32 GetAngle() const { return mAngle; }
     public: void SetDesiredAngle( S32 desiredAngle, S32 frameIdx );
     
+    public: void SendFaultReset();
+    
     //--------------------------------------------------------------------------
     // The communication state machine is used to keep track of communications
     // with the motor controller, trying to ensure that that the motor 
@@ -155,10 +157,15 @@ class CANMotorController
     private: eCommunicationState mCommunicationState;
     private: SDOField* mpActiveSDOField;
     private: SDOField mReadAction;
+    private: SDOField mReadStatusAction;
     private: eState mState;
     private: bool mbAngleValid;
     private: S32 mAngle;
     private: S32 mLastAnglePollFrameIdx;
+    
+    private: bool mbStatusValid;
+    private: U16 mEposStatusword;
+    private: S32 mLastStatusPollFrameIdx;
     
     private: bool mbDesiredAngleValid;
     private: S32 mDesiredAngle;

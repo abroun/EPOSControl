@@ -70,7 +70,8 @@ void CANChannel::OnCANOpenPostTPDO()
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg )
 {
-    printf( "PostEmergency called\n" );
+    printf( "PostEmergency called for node %i - Error: %s\n", 
+            nodeId, GetEposErrorMessage( errCode, errReg ) );
 }
 
 //------------------------------------------------------------------------------
@@ -126,17 +127,21 @@ void CANChannel::OnCANUpdate()
 //------------------------------------------------------------------------------
 void CANChannel::ConfigureAllMotorControllersForPositionControl()
 {
-    CANMotorControllerAction actionList[ 10 ];
+    CANMotorControllerAction actionList[ 5 ];
     S32 actionIdx = 0;
     
     actionList[ actionIdx++ ] = CANMotorControllerAction::CreateEnsureNMTStateAction(
         EnsureNMTState( EnsureNMTState::eT_Passive, eNMTS_PreOperational ) );
     
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
+        SDOField( SDOField::eT_Write, "Mode of Operation", 0x6060, 0 ) );
+    actionList[ actionIdx++ ].mSDOField.SetU8( 1 );     // Use profile position mode
+        
+    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Profile Velocity", 0x6081, 0 ) );
     actionList[ actionIdx++ ].mSDOField.SetU32( 500 );
     
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
+    /*actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Transmit PDO 1 Parameter", 0x1800, 1 ) );
     actionList[ actionIdx++ ].mSDOField.SetU32( 0x180 + MASTER_NODE_ID );
     
@@ -159,6 +164,7 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Transmit PDO 1 Map - Num Items", 0x1A00, 0 ) );
     actionList[ actionIdx++ ].mSDOField.SetU8( 1 );    // Reenable PDO
+    */
     
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
@@ -205,6 +211,150 @@ void CANChannel::SetMotorAngle( U8 nodeId, S32 angle )
     if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
     {
          mMotorControllers[ nodeId ].SetDesiredAngle( angle, mFrameIdx );
+    }
+}
+
+//------------------------------------------------------------------------------
+void CANChannel::SendFaultReset( U8 nodeId )
+{
+    if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
+    {
+         mMotorControllers[ nodeId ].SendFaultReset();
+    }
+}
+
+//------------------------------------------------------------------------------
+const char* CANChannel::GetEposErrorMessage( U16 errCode, U8 errReg )
+{
+    if ( 0x0000 == errCode && 0x00 == errReg )
+    {
+        return "No Error";
+    }
+    else if ( 0x1000 == errCode && 0x01 == errReg )
+    {
+        return "Generic Error";
+    }
+    else if ( 0x2310 == errCode && 0x02 == errReg )
+    {
+        return "Over Current Error";
+    }
+    else if ( 0x3210 == errCode && 0x04 == errReg )
+    {
+        return "Over Voltage Error";
+    }
+    else if ( 0x3220 == errCode && 0x04 == errReg )
+    {
+        return "Under Voltage";
+    }
+    else if ( 0x4210 == errCode && 0x08 == errReg )
+    {
+        return "Over Temperature";
+    }
+    else if ( 0x5113 == errCode && 0x04 == errReg )
+    {
+        return "Supply Voltage (+5V) too low";
+    }
+    else if ( 0x6100 == errCode && 0x20 == errReg )
+    {
+        return "Internal Software Error";
+    }
+    else if ( 0x6320 == errCode && 0x20 == errReg )
+    {
+        return "Software Parameter Error";
+    }
+    else if ( 0x7320 == errCode && 0x20 == errReg )
+    {
+        return "Sensor Position Error";
+    }
+    else if ( 0x8110 == errCode && 0x10 == errReg )
+    {
+        return "CAN Overrun Error (Objects Lost)";
+    }
+    else if ( 0x8111 == errCode && 0x10 == errReg )
+    {
+        return "CAN Overrun Error";
+    }
+    else if ( 0x8120 == errCode && 0x10 == errReg )
+    {
+        return "CAN Passive Mode Error";
+    }
+    else if ( 0x8130 == errCode && 0x10 == errReg )
+    {
+        return "CAN Life Guard Error";
+    }
+    else if ( 0x8150 == errCode && 0x10 == errReg )
+    {
+        return "CAN Tansmit COB-ID collision";
+    }
+    else if ( 0x81FD == errCode && 0x10 == errReg )
+    {
+        return "CAN Bus Off";
+    }
+    else if ( 0x81FE == errCode && 0x10 == errReg )
+    {
+        return "CAN Rx Queue Overrun";
+    }
+    else if ( 0x81FF == errCode && 0x10 == errReg )
+    {
+        return "CAN Tx Queue Overrun";
+    }
+    else if ( 0x8210 == errCode && 0x10 == errReg )
+    {
+        return "CAN PDO Length Error";
+    }
+    else if ( 0x8611 == errCode && 0x20 == errReg )
+    {
+        return "Following Error";
+    }
+    else if ( 0xFF01 == errCode && 0x80 == errReg )
+    {
+        return "Hall Sensor Error";
+    }
+    else if ( 0xFF02 == errCode && 0x80 == errReg )
+    {
+        return "Index Processing Error";
+    }
+    else if ( 0xFF03 == errCode && 0x80 == errReg )
+    {
+        return "Encoder Resolution Error";
+    }
+    else if ( 0xFF04 == errCode && 0x80 == errReg )
+    {
+        return "Hallsensor not found Error";
+    }
+    else if ( 0xFF06 == errCode && 0x80 == errReg )
+    {
+        return "Negative Limit Error";
+    }
+    else if ( 0xFF07 == errCode && 0x80 == errReg )
+    {
+        return "Positive Limit Error";
+    }
+    else if ( 0xFF08 == errCode && 0x80 == errReg )
+    {
+        return "Hall Angle detection Error";
+    }
+    else if ( 0xFF09 == errCode && 0x80 == errReg )
+    {
+        return "Software Position Limit Error";
+    }
+    else if ( 0xFF0A == errCode && 0x80 == errReg )
+    {
+        return "Position Sensor Breach";
+    }
+    else if ( 0xFF0B == errCode && 0x20 == errReg )
+    {
+        return "System Overloaded";
+    }
+    else
+    {
+        static char buffer[ 128 ];
+        
+        snprintf( buffer, sizeof( buffer ), 
+                  "Unrecognised error message 0x%X - 0x%X", errCode, errReg );
+        buffer[ sizeof( buffer ) - 1 ] = '\0';
+        
+        return buffer;
     }
 }
    

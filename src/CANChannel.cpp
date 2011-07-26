@@ -127,7 +127,7 @@ void CANChannel::OnCANUpdate()
 //------------------------------------------------------------------------------
 void CANChannel::ConfigureAllMotorControllersForPositionControl()
 {
-    CANMotorControllerAction actionList[ 5 ];
+    CANMotorControllerAction actionList[ 6 ];
     S32 actionIdx = 0;
     
     actionList[ actionIdx++ ] = CANMotorControllerAction::CreateEnsureNMTStateAction(
@@ -140,6 +140,10 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
     actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Profile Velocity", 0x6081, 0 ) );
     actionList[ actionIdx++ ].mSDOField.SetU32( 500 );
+    
+    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
+        SDOField( SDOField::eT_Write, "Motion profile type", 0x6086, 0 ) );
+    actionList[ actionIdx++ ].mSDOField.SetU16( 1 );    // Use a sinusoidal profile
     
     /*actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
         SDOField( SDOField::eT_Write, "Transmit PDO 1 Parameter", 0x1800, 1 ) );

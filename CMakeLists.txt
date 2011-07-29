@@ -1,6 +1,29 @@
 cmake_minimum_required( VERSION 2.8 )
 PROJECT( eposcontrol )
 
+# Setup installation settings for library RPATHs
+# use, i.e. don't skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+
+# the RPATH to be used when installing, but only if it's not a system directory
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
+
+#-------------------------------------------------------------------------------
+
 FIND_PACKAGE( PythonInterp )
 FIND_PACKAGE( PythonLibs )
 
@@ -21,25 +44,30 @@ ENDIF()
 
 INCLUDE_DIRECTORIES(
     /usr/local/include/canfestival
+    ${CAN_OPEN_MASTER_INCLUDE_DIR}
     ${PROJECT_SOURCE_DIR}/include
     ${PYTHON_INCLUDE_DIR} )
+
+LINK_DIRECTORIES(
+    ${CAN_OPEN_MASTER_LIB_DIR} )
 
 #-------------------------------------------------------------------------------
 # EPOSControl library
 #-------------------------------------------------------------------------------
 SET( EPOSControlFiles 
-    src/CANFestivalInterface.cpp
+    src/CANOpenInterface.cpp
     src/CANChannel.cpp
     src/EPOSControl.cpp
     src/CANMotorControllerAction.cpp
     src/CANMotorController.cpp
     src/SDOField.cpp
-    src/ObjDict/EPOSObjectDict_1.c
-    src/ObjDict/EPOSObjectDict_2.c
     ) 
 
 ADD_LIBRARY( EPOSControl ${EPOSControlFiles} )
+#TARGET_LINK_LIBRARIES( EPOSControl CanOpenMaster )
+
 ADD_LIBRARY( EPOSControlShared SHARED ${EPOSControlFiles} )
+#TARGET_LINK_LIBRARIES( EPOSControlShared CanOpenMaster )
 SET_TARGET_PROPERTIES( EPOSControlShared 
     PROPERTIES OUTPUT_NAME EPOSControl )
 
@@ -59,11 +87,12 @@ SET_TARGET_PROPERTIES( EPOSControlPython
     PROPERTIES OUTPUT_NAME PyEPOSControl )
 TARGET_LINK_LIBRARIES( EPOSControlPython
     EPOSControl
-    pcan
-    canfestival_unix 
-    canfestival
-    pthread rt dl )
+    CanOpenMaster
+    boost_thread
+    ftdi        # Driver libraries
+    )
 SET_TARGET_PROPERTIES( EPOSControlPython PROPERTIES PREFIX "" )
+SET_TARGET_PROPERTIES( EPOSControlPython PROPERTIES LINK_FLAGS ${CAN_OPEN_MASTER_LINK_FLAGS} )
 INSTALL( TARGETS EPOSControlPython
         LIBRARY DESTINATION ${PYTHON_PLUGIN_INSTALL_PATH} )
 
@@ -75,10 +104,10 @@ ADD_EXECUTABLE( simple
 
 TARGET_LINK_LIBRARIES( simple 
     EPOSControl
-    pcan
-    canfestival_unix 
-    canfestival
-    pthread rt dl )
+    CanOpenMaster
+    boost_thread
+    ftdi        # Driver libraries
+    )
 
 INSTALL( TARGETS simple
         RUNTIME DESTINATION bin )

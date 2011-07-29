@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "EPOSControl/CANChannel.h"
-#include "CANFestivalInterface.h"
+#include "CANOpenInterface.h"
 
 //------------------------------------------------------------------------------
 CANChannel::CANChannel()
@@ -95,7 +95,7 @@ void CANChannel::OnSDOFieldReadComplete( U8 nodeId, U8* pData, U32 numBytes )
 }
    
 //------------------------------------------------------------------------------
-void CANChannel::OnCANUpdate()
+void CANChannel::Update()
 {
     S32 nodeId = mStartingNodeId;
     S32 numNodesUpdated = 0;
@@ -367,7 +367,7 @@ bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
 {
     if ( !mbInitialised )
     {
-        if ( !CFI_InitCANChannel( this, canDevice, baudRate ) )
+        if ( !COI_InitCANChannel( this, canDevice, baudRate ) )
         {
             fprintf( stderr, "Error: Unable set up CAN bus\n" );
             goto Finished;
@@ -396,7 +396,7 @@ void CANChannel::Deinit()
         mMotorControllers[ nodeId ].Deinit();
     }
     
-    CFI_DeinitCANChannel( this );
+    COI_DeinitCANChannel( this );
     
     mbInitialised = false;
 }

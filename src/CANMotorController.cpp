@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "EPOSControl/CANMotorController.h"
-#include "CANFestivalInterface.h"
+#include "CANOpenInterface.h"
 
 //------------------------------------------------------------------------------
 CANMotorController::CANMotorController()
@@ -108,7 +108,7 @@ void CANMotorController::Update( S32 frameIdx )
                     assert( false && "Unhandled state encountered" );
                 }
             }
-        }*/    
+        }*/ 
         
         switch ( mState )
         {
@@ -169,9 +169,9 @@ void CANMotorController::Update( S32 frameIdx )
                         {
                             // Nothing else to do so poll
                             if ( !mbAngleValid
-                                || ( frameIdx - mLastAnglePollFrameIdx > 1000 ) )    // Poll at 1Hz TODO: Make this nicer
+                                || ( frameIdx - mLastAnglePollFrameIdx > 200 ) )    // Poll at 5Hz TODO: Make this nicer
                             {
-                                if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                                if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
                                 {
                                     mpActiveSDOField = &mReadAction;
                                     mCommunicationState =  eCS_WaitingForSDORead;
@@ -181,7 +181,7 @@ void CANMotorController::Update( S32 frameIdx )
                             else if ( !mbStatusValid
                                 || ( frameIdx - mLastStatusPollFrameIdx > 5000 ) )    // Poll at 1Hz TODO: Make this nicer
                             {
-                                if ( CFI_ProcessSDOField( mpOwner, mNodeId, mReadStatusAction ) )
+                                if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadStatusAction ) )
                                 {
                                     mpActiveSDOField = &mReadStatusAction;
                                     mCommunicationState =  eCS_WaitingForSDORead;
@@ -443,7 +443,7 @@ bool CANMotorController::ProcessAction( CANMotorControllerAction& action, bool b
                 {
                     assert( NULL == mpActiveSDOField );
                     
-                    if ( CFI_ProcessSDOField( mpOwner, mNodeId, action.mSDOField ) )
+                    if ( COI_ProcessSDOField( mpOwner, mNodeId, action.mSDOField ) )
                     {
                         mpActiveSDOField = &action.mSDOField;
                         mCommunicationState = 

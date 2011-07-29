@@ -42,7 +42,9 @@ class CANChannel
     public: void OnCANOpenPostSlaveBootup( U8 nodeId );
     public: void OnSDOFieldWriteComplete( U8 nodeId );
     public: void OnSDOFieldReadComplete( U8 nodeId, U8* pData, U32 numBytes );
-    public: void OnCANUpdate();
+    
+    //--------------------------------------------------------------------------
+    public: void Update();
     
     //--------------------------------------------------------------------------
     public: void ConfigureAllMotorControllersForPositionControl();

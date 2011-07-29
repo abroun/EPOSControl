@@ -29,13 +29,9 @@ typedef struct
 static PyObject* getJointAngles( PyObject* pSelf, PyObject* args )
 {
     // Get the information from the EPOS control library
-    EPOS_EnterCANMutex();
-    
     AngleData angleData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
     S32 numAngles = 0;
     gpChannel->GetMotorAngles( angleData, &numAngles );
-    
-    EPOS_LeaveCANMutex();
     
     // Build the information into dictionaries
     PyObject* pNodeDict = PyDict_New();
@@ -66,8 +62,6 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    EPOS_EnterCANMutex();
-    
     Py_ssize_t listLength = PyList_Size( pList );
     for ( Py_ssize_t listIdx = 0; listIdx < listLength; listIdx++ )
     {
@@ -76,7 +70,6 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
             || PyTuple_Size( pInputTuple ) < 3 )
         {
             PyErr_SetString( PyExc_Exception, "Found list item which isn't a tuple with 3 items" );
-            EPOS_LeaveCANMutex();
             return NULL;
         }
         
@@ -95,7 +88,6 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
         if ( bDataInvalid )
         {
             PyErr_SetString( PyExc_Exception, "Invalid data in tuple" );
-            EPOS_LeaveCANMutex();
             return NULL;
         }
         
@@ -104,8 +96,6 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
             gpChannel->SetMotorAngle( (U8)nodeId, angle );
         }
     }
-    
-    EPOS_LeaveCANMutex();
     
     Py_RETURN_NONE;
 }
@@ -122,14 +112,29 @@ static PyObject* sendFaultReset( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    EPOS_EnterCANMutex();
-    
     if ( GP_CHANNEL_IDX == channelIdx )
     {
         gpChannel->SendFaultReset( (U8)nodeId );
     }
     
-    EPOS_LeaveCANMutex();
+    Py_RETURN_NONE;
+}
+
+//------------------------------------------------------------------------------
+// Updates a given channel
+static PyObject* updateChannel( PyObject* pSelf, PyObject* args )
+{
+    S32 channelIdx;
+    if ( !PyArg_ParseTuple( args, "i", &channelIdx ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+    
+    if ( GP_CHANNEL_IDX == channelIdx )
+    {
+        gpChannel->Update();
+    }
     
     Py_RETURN_NONE;
 }
@@ -188,6 +193,7 @@ static PyMethodDef EPOSControlObjectMethods[] =
     { "getJointAngles", getJointAngles, METH_VARARGS, "Get the motor controller joint angles" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
     { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
+    { "updateChannel", updateChannel, METH_VARARGS, "Updates a given channel" },
     {NULL}  /* Sentinel */
 };
 

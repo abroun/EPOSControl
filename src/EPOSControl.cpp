@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #include "EPOSControl/EPOSControl.h"
-#include "CANFestivalInterface.h"
+#include "CANOpenInterface.h"
 
 //------------------------------------------------------------------------------
 // Constants
@@ -27,7 +27,7 @@ bool EPOS_InitLibaray()
 {
     if ( !gbInitialised )
     {
-        if ( !CFI_InitCANFestivalInterface() )
+        if ( !COI_InitCANOpenInterface() )
         {
             goto Finished;
         }
@@ -83,16 +83,4 @@ void EPOS_CloseCANChannel( CANChannel* pChannel )
             break;
         }
     }
-}
-
-//------------------------------------------------------------------------------
-void EPOS_EnterCANMutex()
-{
-    CFI_EnterMutex();
-}
-
-//------------------------------------------------------------------------------
-void EPOS_LeaveCANMutex()
-{
-    CFI_LeaveMutex();
 }

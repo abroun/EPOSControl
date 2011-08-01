@@ -43,7 +43,6 @@ class CANMotorController
         eS_Inactive,
         eS_ProcessingConfigurationActions,
         eS_ProcessingExtraActions,
-        eS_PollingForPosition,
     };
     
     //--------------------------------------------------------------------------
@@ -77,19 +76,18 @@ class CANMotorController
     public: bool IsAngleValid() const { return mbInitialised && mbAngleValid; }
     public: S32 GetAngle() const { return mAngle; }
     public: void SetDesiredAngle( S32 desiredAngle, S32 frameIdx );
+    public: void SetProfileVelocity( U32 profileVelocity );
     
     public: void SendFaultReset();
     
     //--------------------------------------------------------------------------
-    // The communication state machine is used to keep track of communications
-    // with the motor controller, trying to ensure that that the motor 
-    // controller is in
-    public: enum eCommunicationState
+    // The SDO communication state machine is used to keep track of an SDO read
+    // or write
+    public: enum eSdoCommunicationState
     {
-        eCS_Inactive,
-        eCS_WaitingForSDORead,
-        eCS_WaitingForSDOWrite,
-        eCS_NumCommunicationStates
+        eSCS_Inactive,
+        eSCS_Active,
+        eSCS_NumSdoCommunicationStates
     };
   
     //--------------------------------------------------------------------------
@@ -154,8 +152,9 @@ class CANMotorController
     private: S32 mNumConfigurationActionsDone;
     
     private: eNMT_State mLastKnownNMTState;
-    private: eCommunicationState mCommunicationState;
-    private: SDOField* mpActiveSDOField;
+    private: eSdoCommunicationState mSdoReadState;
+    private: eSdoCommunicationState mSdoWriteState;
+    private: SDOField* mpActiveSdoReadField;
     private: SDOField mReadAction;
     private: SDOField mReadStatusAction;
     private: eState mState;

@@ -40,10 +40,13 @@ static PyObject* getJointAngles( PyObject* pSelf, PyObject* args )
         PyObject* pKey = PyString_FromFormat( "%i", angleData[ angleIdx ].mNodeId );
         PyObject* pValue = PyInt_FromLong( angleData[ angleIdx ].mAngle );
         PyDict_SetItem( pNodeDict, pKey, pValue );
+        Py_DECREF( pKey );
+        Py_DECREF( pValue );
     }
     
     PyObject* pChannelDict = PyDict_New();
     PyDict_SetItem( pChannelDict, PyString_FromString( GP_CHANNEL_IDX_STR ), pNodeDict );
+    Py_DECREF( pNodeDict );
     
     return pChannelDict;
 }
@@ -96,6 +99,22 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
             gpChannel->SetMotorAngle( (U8)nodeId, angle );
         }
     }
+    
+    Py_RETURN_NONE;
+}
+
+//------------------------------------------------------------------------------
+// Sets the speed in encoder ticks per second at which the motors move
+static PyObject* setMotorProfileVelocity( PyObject* pSelf, PyObject* args )
+{    
+    S32 profileVelocity;
+    if ( !PyArg_ParseTuple( args, "i", &profileVelocity ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+    
+    gpChannel->SetMotorProfileVelocity( (U32)profileVelocity );
     
     Py_RETURN_NONE;
 }
@@ -192,6 +211,7 @@ static PyMethodDef EPOSControlObjectMethods[] =
 {
     { "getJointAngles", getJointAngles, METH_VARARGS, "Get the motor controller joint angles" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
+    { "setMotorProfileVelocity", setMotorProfileVelocity, METH_VARARGS, "Sets the speed in encoder ticks per second at which the motors move" },
     { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
     { "updateChannel", updateChannel, METH_VARARGS, "Updates a given channel" },
     {NULL}  /* Sentinel */

@@ -219,6 +219,15 @@ void CANChannel::SetMotorAngle( U8 nodeId, S32 angle )
 }
 
 //------------------------------------------------------------------------------
+void CANChannel::SetMotorProfileVelocity( U32 velocity )
+{
+    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+    {
+        mMotorControllers[ nodeId ].SetProfileVelocity( velocity );
+    }
+}
+
+//------------------------------------------------------------------------------
 void CANChannel::SendFaultReset( U8 nodeId )
 {
     if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )

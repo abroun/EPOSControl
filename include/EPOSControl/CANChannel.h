@@ -55,6 +55,7 @@ class CANChannel
     public: void GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut );
     
     public: void SetMotorAngle( U8 nodeId, S32 angle );
+    public: void SetMotorProfileVelocity( U32 velocity );
     public: void SendFaultReset( U8 nodeId );
     
     //--------------------------------------------------------------------------

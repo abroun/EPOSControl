@@ -11,9 +11,40 @@
 #include "CANOpenInterface.h"
 
 //------------------------------------------------------------------------------
+const SDOField CANMotorController::POSITION_CONTROL_SETUP_COMMANDS[] = {
+    SDOField::CreateWrite_U8( "Mode of Operation", 0x6060, 0, 1 ),      // Use profile position mode
+    SDOField::CreateWrite_U32( "Profile Velocity", 0x6081, 0, 500 ),    // Default to a slow speed
+    SDOField::CreateWrite_U16( "Motion profile type", 0x6086, 0, 1 ),   // Use a sinusoidal profile
+    SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x0006 ),      // Shutdown
+    SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x000F ),      // Switch On
+    
+    SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 )
+};
+
+const SDOField CANMotorController::FAULT_RESET_COMMANDS[] = {
+    SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x0080 ),      // Reset
+    SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x0006 ),      // Shutdown
+    SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x000F ),      // Switch On
+    
+    SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 )
+};
+
+//------------------------------------------------------------------------------
+// CANMotorController
+//------------------------------------------------------------------------------
 CANMotorController::CANMotorController()
     : mbInitialised( false )
 {
+    // Fill in command buffers
+    
+    // Set desired angle
+    mSetDesiredAngleCommands[ 0 ] = SDOField::CreateWrite_S32( "Target Position", 0x607A, 0, 0 );
+    mSetDesiredAngleCommands[ 1 ] = SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x000F );  // Start positioning
+    mSetDesiredAngleCommands[ 2 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
+
+    // Set profile velocity
+    mSetProfileVelocityCommands[ 0 ] = SDOField::CreateWrite_U32( "Profile Velocity", 0x6081, 0, 500 ),
+    mSetProfileVelocityCommands[ 1 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
 }
 
 //------------------------------------------------------------------------------
@@ -32,22 +63,24 @@ bool CANMotorController::Init( CANChannel* pOwner, U8 nodeId )
     {
         mpOwner = pOwner;
         mNodeId = nodeId;
-        
-        mNumConfigurationActions = 0;
-        mNumExtraActions = 0;
-        mNumConfigurationActionsDone = 0;
     
         mLastKnownNMTState = eNMTS_Unknown;
         mSdoReadState = eSCS_Inactive;
         mSdoWriteState = eSCS_Inactive;
         mpActiveSdoReadField = NULL;
         mState = eS_Inactive;
+        mConfiguration = eC_None;
+        mpConfigurationSetupCommands = NULL;
+        mRunningTask = eRT_None;
+        mpRunningTaskCommands = NULL;
         mbPresent = false;
         mbAngleValid = false;
-        mLastAnglePollFrameIdx = 0;
-        mbDesiredAngleValid = false;
         mbStatusValid = false;
         mLastStatusPollFrameIdx = 0;
+        
+        mbFaultResetRequested = false;
+        mbNewDesiredAngleRequested = false;
+        mbNewProfileVelocityRequested = false;
         
         mReadAction = SDOField( SDOField::eT_Read, 
             "Position Actual", 0x6064, 0, HandleSDOReadComplete, this );
@@ -73,11 +106,16 @@ void CANMotorController::Deinit()
 //------------------------------------------------------------------------------
 void CANMotorController::Update( S32 frameIdx )
 {
-    /*if ( mbStatusValid 
-        && ( ( mEposStatusword & 0x0008 ) ) ) //|| 3 == mNodeId ) )
+    static U16 oldStatusWord = 0;
+    if ( mbStatusValid && 3 == mNodeId )
+        //&& ( ( mEposStatusword & 0x0008 ) ) ) //|| 3 == mNodeId ) )
     {
-        printf( "Node %i status is 0x%X\n", mNodeId, mEposStatusword );
-    }*/
+        if ( oldStatusWord != mEposStatusword )
+        {
+            printf( "Node %i status is 0x%X\n", mNodeId, mEposStatusword );
+            oldStatusWord = mEposStatusword;
+        }
+    }
     
     if ( mbPresent )
     {
@@ -111,37 +149,113 @@ void CANMotorController::Update( S32 frameIdx )
         {
             case eS_Inactive:
             {
-                // Check to see if we have any actions to execute
-                if ( mNumConfigurationActions > mNumConfigurationActionsDone )
+                if ( eC_None != mConfiguration )
                 {
-                    mState = eS_ProcessingConfigurationActions;
+                    mState = eS_SettingUp;
                 }
-                else if ( mNumExtraActions > 0 )
+                
+                break;
+            }
+            case eS_SettingUp:
+            {
+                // Process the current SDO write
+                const SDOField* pCurCommand = &mpConfigurationSetupCommands[ mCurConfigurationSetupCommandIdx ];
+                if ( SDOField::eT_Invalid != pCurCommand->mType )
                 {
-                    mState = eS_ProcessingExtraActions;
+                    if ( ProcessSDOWrite( *pCurCommand ) )
+                    {
+                        mCurConfigurationSetupCommandIdx++;
+                        pCurCommand = &mpConfigurationSetupCommands[ mCurConfigurationSetupCommandIdx ];
+                    }
+                }
+                
+                if ( SDOField::eT_Invalid == pCurCommand->mType
+                    && eSCS_Inactive == mSdoWriteState )
+                {
+                    // All setup commands have been sent and received
+                    
+                    // Switch to the Running state
+                    mbFaultResetRequested = false;
+                    mbNewDesiredAngleRequested = false;
+                    mbNewProfileVelocityRequested = false;
+                    mRunningTask = eRT_None;
+                    mState = eS_Running;
                 }
                 break;
             }
-            case eS_ProcessingConfigurationActions:
+            case eS_Running:
             {
-                ProcessConfigurationAction();
-                if ( eSCS_Inactive == mSdoWriteState
-                    && mNumConfigurationActionsDone >= mNumConfigurationActions )
+                if ( eRT_None == mRunningTask )
                 {
-                    mState = eS_Inactive;
+                    // Check to see what we should be doing
+                    // NOTE: The order here implies the priority of the tasks
+                    if ( mbFaultResetRequested )
+                    {
+                        mpRunningTaskCommands = FAULT_RESET_COMMANDS;
+                        mCurRunningTaskCommandIdx = 0;
+                        mbFaultResetRequested = false;
+                        mRunningTask = eRT_SendFaultReset;
+                    }
+                    /*else if ( mbNewProfileVelocityRequested )
+                    {
+                        mSetProfileVelocityCommands[ 0 ].SetU32( mNewProfileVelocity );
+                        mpRunningTaskCommands = mSetProfileVelocityCommands;
+                        mCurRunningTaskCommandIdx = 0;
+                        mbNewProfileVelocityRequested = false;
+                        mRunningTask = eRT_SetProfileVelocity;
+                    }*/
+                    else if ( mbNewDesiredAngleRequested )
+                    {
+                        mSetDesiredAngleCommands[ 0 ].SetS32( mNewDesiredAngle );
+                        mpRunningTaskCommands = mSetDesiredAngleCommands;
+                        mCurRunningTaskCommandIdx = 0;
+                        mbNewDesiredAngleRequested = false;
+                        mRunningTask = eRT_SetDesiredAngle;
+                        
+                        printf( "Setting desired angle to %i\n", mNewDesiredAngle );
+                    }
+                }
+                
+                switch ( mRunningTask )
+                {
+                    case eRT_None:
+                    {
+                        // Nothing to do
+                        break;
+                    }
+                    case eRT_SetDesiredAngle:
+                    case eRT_SendFaultReset:
+                    case eRT_SetProfileVelocity:
+                    {
+                        // Process the current SDO write
+                        const SDOField* pCurCommand = &mpRunningTaskCommands[ mCurRunningTaskCommandIdx ];                        
+                        if ( SDOField::eT_Invalid != pCurCommand->mType )
+                        {
+                            if ( ProcessSDOWrite( *pCurCommand ) )
+                            {
+                                mCurRunningTaskCommandIdx++;
+                                pCurCommand = &mpRunningTaskCommands[ mCurRunningTaskCommandIdx ];
+                            }
+                        }
+                        
+                        if ( SDOField::eT_Invalid == pCurCommand->mType
+                            && eSCS_Inactive == mSdoWriteState )
+                        {
+                            // All commands have been sent and received
+                            mRunningTask = eRT_None;
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        assert( false && "Unhandled Running Task encountered" );
+                    }
+                    
                 }
                 break;
             }
-            case eS_ProcessingExtraActions:
+            case eS_Homing:
             {
-                ProcessExtraAction();
-                if ( eSCS_Inactive == mSdoWriteState
-                    && mNumExtraActions <= 0 )
-                {
-                    //printf( "Node %i finished with extra actions after %i frames\n", 
-                    //        GetNodeId(), frameIdx - mExtraFrameIdx );
-                    mState = eS_Inactive;
-                }
                 break;
             }
             default:
@@ -150,57 +264,60 @@ void CANMotorController::Update( S32 frameIdx )
             }
         }
         
-        // Handle communications that poll for information
-        switch ( mSdoReadState )
+        if ( eS_Running == mState || eS_Homing == mState )
         {
-            case eSCS_Inactive:
+            // Handle communications that poll for information
+            switch ( mSdoReadState )
             {
-                assert( NULL == mpActiveSdoReadField );
-                
-                // We can poll for either position or status
-                if ( !mbStatusValid
-                    || ( frameIdx - mLastStatusPollFrameIdx > 100 ) )    // Poll for status periodically TODO: Make this nicer
+                case eSCS_Inactive:
                 {
-                    mpActiveSdoReadField = &mReadStatusAction;
-                    mSdoReadState =  eSCS_Active;
-                    if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadStatusAction ) )
+                    assert( NULL == mpActiveSdoReadField );
+                    
+                    // We can poll for either position or status
+                    if ( !mbStatusValid
+                        || ( frameIdx - mLastStatusPollFrameIdx > 100 ) )    // Poll for status periodically TODO: Make this nicer
                     {
-                        mLastStatusPollFrameIdx = frameIdx;
+                        mpActiveSdoReadField = &mReadStatusAction;
+                        mSdoReadState =  eSCS_Active;
+                        if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadStatusAction ) )
+                        {
+                            mLastStatusPollFrameIdx = frameIdx;
+                        }
+                        else
+                        {
+                            // Reset
+                            mpActiveSdoReadField = NULL;
+                            mSdoReadState = eSCS_Inactive;
+                        }
                     }
                     else
                     {
-                        // Reset
-                        mpActiveSdoReadField = NULL;
-                        mSdoReadState = eSCS_Inactive;
+                        // Poll for angle
+                        mpActiveSdoReadField = &mReadAction;
+                        mSdoReadState =  eSCS_Active;
+                        if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
+                        {
+                            // Poll complete
+                        }
+                        else
+                        {
+                            // Reset
+                            mpActiveSdoReadField = NULL;
+                            mSdoReadState = eSCS_Inactive;
+                        }
                     }
+                    
+                    break;
                 }
-                else
+                case eSCS_Active:
                 {
-                    // Poll for angle
-                    mpActiveSdoReadField = &mReadAction;
-                    mSdoReadState =  eSCS_Active;
-                    if ( COI_ProcessSDOField( mpOwner, mNodeId, mReadAction ) )
-                    {
-                        mLastAnglePollFrameIdx = frameIdx;
-                    }
-                    else
-                    {
-                        // Reset
-                        mpActiveSdoReadField = NULL;
-                        mSdoReadState = eSCS_Inactive;
-                    }
+                    // Nothing to do
+                    break;
                 }
-                
-                break;
-            }
-            case eSCS_Active:
-            {
-                // Nothing to do
-                break;
-            }
-            default:
-            {
-                assert( false && "Unhandled communication state" );
+                default:
+                {
+                    assert( false && "Unhandled communication state" );
+                }
             }
         }
     }
@@ -243,258 +360,99 @@ void CANMotorController::OnSDOFieldReadComplete( U8* pData, U32 numBytes )
 //------------------------------------------------------------------------------
 void CANMotorController::SetDesiredAngle( S32 desiredAngle, S32 frameIdx )
 {
-    if ( mbDesiredAngleValid && mDesiredAngle == desiredAngle )
-    {
-       return;  // Already set
-    }
-    
-    // Look to see if a target position action is already pending
-    bool bUsedExistingAction = false;
-    for ( S32 actionIdx = mNumExtraActions - 1; actionIdx >= 0; actionIdx-- )
-    {
-        if ( CANMotorControllerAction::eT_SDOField == mExtraActionList[ actionIdx ].mType 
-            && 0x607A == mExtraActionList[ actionIdx ].mSDOField.mIndex )
-        {
-            mExtraActionList[ actionIdx ].mSDOField.SetS32( desiredAngle );
-            bUsedExistingAction = true;
-        }
-    }
-    
-    if ( !bUsedExistingAction )
-    {
-        CANMotorControllerAction action =
-            CANMotorControllerAction::CreateSDOFieldAction(
-                SDOField( SDOField::eT_Write, "Target Position", 0x607A, 0 ) );
-        action.mSDOField.SetS32( desiredAngle );
-        
-        AddExtraAction( action );
-        
-        action = CANMotorControllerAction::CreateSDOFieldAction(
-            SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-        action.mSDOField.SetU16( 0x001F );    // Start positioning
-        
-        AddExtraAction( action );
-    }
-    
-    mbDesiredAngleValid = true;
-    mDesiredAngle = desiredAngle;
-    mExtraFrameIdx = frameIdx;
-    
-    //printf( "Added extra action for node %i to go to %i\n", GetNodeId(), desiredAngle );
+    mNewDesiredAngle = desiredAngle;
+    mbNewDesiredAngleRequested = true;
 }
 
 //------------------------------------------------------------------------------
 void CANMotorController::SetProfileVelocity( U32 profileVelocity )
 {
-    // Look to see if there's an existing action we can hijack
-    bool bUsedExistingAction = false;
-    for ( S32 actionIdx = mNumExtraActions - 1; actionIdx >= 0; actionIdx-- )
-    {
-        if ( CANMotorControllerAction::eT_SDOField == mExtraActionList[ actionIdx ].mType 
-            && 0x6081 == mExtraActionList[ actionIdx ].mSDOField.mIndex )
-        {
-            mExtraActionList[ actionIdx ].mSDOField.SetU32( profileVelocity );
-            bUsedExistingAction = true;
-        }
-    }
+    mNewProfileVelocity = profileVelocity;
+    mbNewProfileVelocityRequested = true;
     
-    if ( !bUsedExistingAction )
-    {
-        CANMotorControllerAction action =
-            CANMotorControllerAction::CreateSDOFieldAction(
-                SDOField( SDOField::eT_Write, "Profile Velocity", 0x6081, 0 ) );
-        action.mSDOField.SetU32( profileVelocity );
-        
-        AddExtraAction( action );
-    }
 }
 
 //------------------------------------------------------------------------------
 void CANMotorController::SendFaultReset()
 {
-    mbDesiredAngleValid = false;
-    mbAngleValid = false;
-    mbStatusValid = false;
-    
-    CANMotorControllerAction action =
-        CANMotorControllerAction::CreateSDOFieldAction(
-            SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-    action.mSDOField.SetU16( 0x0080 );
-    
-    AddExtraAction( action );
-    
-    action = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-    action.mSDOField.SetU16( 0x0006 );    // Shutdown
-    
-    AddExtraAction( action );
-    
-    action = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-    action.mSDOField.SetU16( 0x000F );    // Switch On
-    
-    AddExtraAction( action );
-    
-    printf( "Added fault reset action\n" );
+    mbFaultResetRequested = true;
 }
 
 //------------------------------------------------------------------------------
-void CANMotorController::AddConfigurationAction( const CANMotorControllerAction& action )
+void CANMotorController::SetConfiguration( eConfiguration configuration )
 {
-    if ( mbInitialised )
+    if ( eC_None != configuration 
+        && (eS_Inactive == mState || eS_Running == mState)  // Only want to debug a couple of states for now
+        && configuration != mConfiguration )
     {
-        assert( mNumConfigurationActions < CONFIGURATION_ACTION_LIST_LENGTH );
-        if ( mNumConfigurationActions < CONFIGURATION_ACTION_LIST_LENGTH )
+        const SDOField* pConfigSetupCommands = NULL;
+        
+        if ( eC_PositionControl == configuration )
         {
-            mConfigurationActionList[ mNumConfigurationActions ] = action;
-            mNumConfigurationActions++;
+            pConfigSetupCommands = POSITION_CONTROL_SETUP_COMMANDS;
         }
-    }
-}
-    
-//------------------------------------------------------------------------------
-void CANMotorController::ClearConfiguration()
-{
-    mNumConfigurationActions = 0;
-    mNumConfigurationActionsDone = 0;
-    
-    if ( eS_ProcessingConfigurationActions == mState )
-    {
-        mState = eS_Inactive;
-    }
-}
-    
-//------------------------------------------------------------------------------
-void CANMotorController::AddExtraAction( const CANMotorControllerAction& action )
-{
-    if ( mbInitialised && mbPresent )
-    {
-        //assert( mNumExtraActions < EXTRA_ACTION_LIST_LENGTH );
-        if ( mNumExtraActions < EXTRA_ACTION_LIST_LENGTH )
+        
+        if ( NULL == pConfigSetupCommands )
         {
-            mExtraActionList[ mNumExtraActions ] = action;
-            mNumExtraActions++;
+            fprintf( stderr, "Error: Unable to find commands for configuration %i\n", configuration );
+            return;
         }
-        else
+        
+        mpConfigurationSetupCommands = pConfigSetupCommands;
+        mCurConfigurationSetupCommandIdx = 0;
+        mConfiguration = configuration;
+        
+        if ( eS_Inactive != mState )
         {
-            printf( "Warning: Action lost for node %i\n", GetNodeId() );
+            // We can start setting up straight away
+            mState = eS_SettingUp;
         }
     }
 }
 
 //------------------------------------------------------------------------------
-void CANMotorController::RemoveFirstExtraAction()
+bool CANMotorController::ProcessSDOWrite( const SDOField& sdoField, bool bDebug )
 {
-    if ( mbInitialised 
-        && mNumExtraActions > 0 )
-    {
-        // Very inefficient update of the queue by copying all fields forward
-        // one space.
-        memcpy( &mExtraActionList[ 0 ], &mExtraActionList[ 1 ], 
-            sizeof( CANMotorControllerAction )*(mNumExtraActions-1) );
-        mNumExtraActions--;
-    }
-}
-
-//------------------------------------------------------------------------------
-void CANMotorController::ProcessConfigurationAction()
-{ 
-    if ( mNumConfigurationActionsDone < mNumConfigurationActions )
-    {
-        CANMotorControllerAction& curAction = mConfigurationActionList[ mNumConfigurationActionsDone ];
-        bool bActionComplete = ProcessAction( curAction );
-        if ( bActionComplete )
-        {
-            mNumConfigurationActionsDone++;
-        }
-    }
-}
+    assert( SDOField::eT_Write == sdoField.mType );
     
-//------------------------------------------------------------------------------
-void CANMotorController::ProcessExtraAction()
-{
-    if ( mNumExtraActions > 0 )
-    {
-        CANMotorControllerAction& curAction = mExtraActionList[ 0 ];
-        bool bActionComplete = ProcessAction( curAction, true );
-        if ( bActionComplete )
-        {
-            //printf( "Sent extra action for node %i\n", GetNodeId() );
-            RemoveFirstExtraAction();
-        }
-    }
-}
-
-//------------------------------------------------------------------------------
-bool CANMotorController::ProcessAction( CANMotorControllerAction& action, bool bDebug )
-{
-    bool bActionComplete = false;
+    bool bWriteComplete = false;
     
-    switch ( action.mType )
+    switch ( mSdoWriteState )
     {
-        case CANMotorControllerAction::eT_EnsureNMTState:
-        {
-            if ( mLastKnownNMTState == action.mEnsureNMTState.mDesiredState )
-            {
-                // We've got to the desired state
-                bActionComplete = true;
+        case eSCS_Inactive:
+        {   
+            bWriteComplete = true;
+            mSdoWriteState = eSCS_Active;
+            if ( COI_ProcessSDOField( mpOwner, mNodeId, sdoField ) )
+            {    
+                mSDOWriteFrameIdx = mpOwner->GetFrameIdx();
             }
-            else
-            { 
-                if ( EnsureNMTState::eT_Active == action.mEnsureNMTState.mType )
+            else 
+            {
+                // Reset
+                bWriteComplete = false;
+                mSdoWriteState = eSCS_Inactive;
+                
+                if ( bDebug )
                 {
-                    assert( false && "Active state change not implemented yet" );
+                    printf( "Couldn't send action\n" );
                 }
             }
+            
             break;
         }
-        case CANMotorControllerAction::eT_SDOField:
+        case eSCS_Active:
         {
-            assert( SDOField::eT_Write == action.mSDOField.mType && "Cannot handle reads here" );
-            
-            switch ( mSdoWriteState )
-            {
-                case eSCS_Inactive:
-                {   
-                    bActionComplete = true;
-                    mSdoWriteState = eSCS_Active;
-                    if ( COI_ProcessSDOField( mpOwner, mNodeId, action.mSDOField ) )
-                    {    
-                        mSDOWriteFrameIdx = mpOwner->GetFrameIdx();
-                    }
-                    else 
-                    {
-                        // Reset
-                        bActionComplete = false;
-                        mSdoWriteState = eSCS_Inactive;
-                        
-                        if ( bDebug )
-                        {
-                            printf( "Couldn't send action\n" );
-                        }
-                    }
-                    
-                    break;
-                }
-                case eSCS_Active:
-                {
-                    // Already performing an SDO write so wait
-                    break;
-                }
-                default:
-                {
-                    assert( false && "Unhandled communication state" );
-                }
-            }
+            // Already performing an SDO write so wait
             break;
         }
         default:
         {
-            assert( false && "Unhandled CAN motor controller action type" );
+            assert( false && "Unhandled communication state" );
         }
     }
     
-    return bActionComplete;
+    return bWriteComplete;
 }
 
 //------------------------------------------------------------------------------

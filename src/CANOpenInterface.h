@@ -22,6 +22,6 @@ bool COI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate 
 void COI_DeinitCANChannel( CANChannel* pChannel );
 
 //------------------------------------------------------------------------------
-bool COI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, SDOField& field );
+bool COI_ProcessSDOField( CANChannel* pChannel, U8 nodeId, const SDOField& field );
 
 #endif // CAN_OPEN_INTERFACE_h

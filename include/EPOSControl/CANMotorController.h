@@ -41,8 +41,28 @@ class CANMotorController
     public: enum eState
     {
         eS_Inactive,
+        eS_SettingUp,
+        eS_Running,
+        eS_Homing,
+        
         eS_ProcessingConfigurationActions,
         eS_ProcessingExtraActions,
+    };
+    
+    //--------------------------------------------------------------------------
+    public: enum eConfiguration
+    {
+        eC_None,
+        eC_PositionControl
+    };
+    
+    //--------------------------------------------------------------------------
+    public: enum eRunningTask
+    {
+        eRT_None,
+        eRT_SetDesiredAngle,
+        eRT_SendFaultReset,
+        eRT_SetProfileVelocity
     };
     
     //--------------------------------------------------------------------------
@@ -54,6 +74,8 @@ class CANMotorController
     public: void Deinit();
     public: bool IsInitialised() const { return mbInitialised; }
     public: U8 GetNodeId() const { return mNodeId; }
+    public: eState GetState() const { return mState; }
+    public: eConfiguration GetConfiguration() const { return mConfiguration; }
     
     //--------------------------------------------------------------------------
     // This will start returning true when evidence is received that the
@@ -75,9 +97,11 @@ class CANMotorController
   
     public: bool IsAngleValid() const { return mbInitialised && mbAngleValid; }
     public: S32 GetAngle() const { return mAngle; }
+    
+    // Commands for controlling the motor controller in the eS_Running state.
+    // NOTE: These routines are _not_ thread safe with the update routine
     public: void SetDesiredAngle( S32 desiredAngle, S32 frameIdx );
     public: void SetProfileVelocity( U32 profileVelocity );
-    
     public: void SendFaultReset();
     
     //--------------------------------------------------------------------------
@@ -91,47 +115,10 @@ class CANMotorController
     };
   
     //--------------------------------------------------------------------------
-    // Adds an action to the configuration actions for the motor controller
-    public: void AddConfigurationAction( const CANMotorControllerAction& action );
+    public: void SetConfiguration( eConfiguration configuration );
     
     //--------------------------------------------------------------------------
-    public: void ClearConfiguration();
-    
-    //--------------------------------------------------------------------------
-    // Adds an action to the list of extra actions for the motor controller
-    public: void AddExtraAction( const CANMotorControllerAction& action );
-    
-    private: void RemoveFirstExtraAction();
-    
-//     //--------------------------------------------------------------------------
-//     // This routine is called by the owning CANChannel when an SDO read from
-//     // the physical motor controller is complete in order to give the motor 
-//     // controller object the read data.
-//     public: void OnSDOReadComplete( const SDOField& readField );
-//     
-//     //--------------------------------------------------------------------------
-//     // Lets the motor controller object know that an SDO write has been
-//     // completed.
-//     public: void OnSDOWriteComplete();
-//     
-//     //--------------------------------------------------------------------------
-//     // Gets the field currently waiting to be read or written from the motor
-//     // controller. Returns NULL if nothing is waiting to be read or written.
-//     public: const SDOField* GetSDOQueueHead() const;
-//     
-//     //--------------------------------------------------------------------------
-//     // Moves the SDO queue forward one
-//     private: void AdvanceSDOQueue();
-    
-    //--------------------------------------------------------------------------
-    // Helper routine for internal state
-    private: void ProcessConfigurationAction();
-    
-    //--------------------------------------------------------------------------
-    // Helper routine for internal state
-    private: void ProcessExtraAction();
-    
-    private: bool ProcessAction( CANMotorControllerAction& action, bool bDebug=false );
+    private: bool ProcessSDOWrite( const SDOField& sdoField, bool bDebug=false );
     
     //--------------------------------------------------------------------------
     private: static void HandleSDOReadComplete( SDOField& field );
@@ -145,12 +132,6 @@ class CANMotorController
     private: U8 mNodeId;
     private: bool mbPresent;
     
-    private: CANMotorControllerAction mConfigurationActionList[ CONFIGURATION_ACTION_LIST_LENGTH ];
-    private: CANMotorControllerAction mExtraActionList[ EXTRA_ACTION_LIST_LENGTH ];
-    private: S32 mNumConfigurationActions;
-    private: S32 mNumExtraActions;
-    private: S32 mNumConfigurationActionsDone;
-    
     private: eNMT_State mLastKnownNMTState;
     private: eSdoCommunicationState mSdoReadState;
     private: eSdoCommunicationState mSdoWriteState;
@@ -158,18 +139,35 @@ class CANMotorController
     private: SDOField mReadAction;
     private: SDOField mReadStatusAction;
     private: eState mState;
+    private: eConfiguration mConfiguration;
+    private: eRunningTask mRunningTask;
     private: bool mbAngleValid;
     private: S32 mAngle;
-    private: S32 mLastAnglePollFrameIdx;
+    
+    private: bool mbFaultResetRequested;
+    private: bool mbNewDesiredAngleRequested;
+    private: bool mbNewProfileVelocityRequested;
+    
     
     private: bool mbStatusValid;
     private: U16 mEposStatusword;
     private: S32 mLastStatusPollFrameIdx;
     
-    private: bool mbDesiredAngleValid;
-    private: S32 mDesiredAngle;
-    private: S32 mExtraFrameIdx;
+    private: S32 mNewDesiredAngle;
+    private: S32 mNewProfileVelocity;
     private: S32 mSDOWriteFrameIdx;
+    
+    private: const SDOField* mpConfigurationSetupCommands;
+    private: S32 mCurConfigurationSetupCommandIdx;
+    
+    private: const SDOField* mpRunningTaskCommands;
+    private: S32 mCurRunningTaskCommandIdx;
+    
+    private: SDOField mSetDesiredAngleCommands[ 2 + 1 ];
+    private: SDOField mSetProfileVelocityCommands[ 1 + 1 ];
+    
+    private: static const SDOField POSITION_CONTROL_SETUP_COMMANDS[];
+    private: static const SDOField FAULT_RESET_COMMANDS[];
 };
 
 #endif // CAN_MOTOR_CONTROLLER_H

@@ -32,7 +32,40 @@ struct SDOField
     SDOField();
     SDOField( eType type, const char* pDescription, U16 mIndex, U8 mSubIndex,
               SDOReadCallback readCallback = NULL, void* pUserData = NULL );
-       
+    
+    //--------------------------------------------------------------------------
+    static SDOField CreateWrite_U8( const char* pDescription, U16 mIndex, U8 mSubIndex, U8 data ) 
+    {
+        SDOField field( eT_Write, pDescription, mIndex, mSubIndex );
+        field.SetU8( data );
+        
+        return field;
+    }
+    
+    static SDOField CreateWrite_U16( const char* pDescription, U16 mIndex, U8 mSubIndex, U16 data ) 
+    {
+        SDOField field( eT_Write, pDescription, mIndex, mSubIndex );
+        field.SetU16( data );
+        
+        return field;
+    }
+    
+    static SDOField CreateWrite_U32( const char* pDescription, U16 mIndex, U8 mSubIndex, U32 data ) 
+    {
+        SDOField field( eT_Write, pDescription, mIndex, mSubIndex );
+        field.SetU32( data );
+        
+        return field;
+    }
+    
+    static SDOField CreateWrite_S32( const char* pDescription, U16 mIndex, U8 mSubIndex, S32 data ) 
+    {
+        SDOField field( eT_Write, pDescription, mIndex, mSubIndex );
+        field.SetS32( data );
+        
+        return field;
+    }
+              
     //--------------------------------------------------------------------------
     void SetU8( U8 data ) 
     { 

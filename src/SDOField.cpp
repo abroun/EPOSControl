@@ -29,8 +29,6 @@ SDOField::SDOField( eType type, const char* pDescription, U16 index, U8 subIndex
     mReadCallback( readCallback ),
     mpUserData( pUserData )
 {
-    assert( type >= 0 && type < eT_NumTypes && "Invalid type given" );
-    
     // Copy description into buffer and make sure that it's NUL terminated.
     strncpy( mDescription, pDescription, sizeof( mDescription ) );
     mDescription[ sizeof( mDescription ) - 1 ] = '\0';

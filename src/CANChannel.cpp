@@ -127,67 +127,9 @@ void CANChannel::Update()
 //------------------------------------------------------------------------------
 void CANChannel::ConfigureAllMotorControllersForPositionControl()
 {
-    CANMotorControllerAction actionList[ 6 ];
-    S32 actionIdx = 0;
-    
-    actionList[ actionIdx++ ] = CANMotorControllerAction::CreateEnsureNMTStateAction(
-        EnsureNMTState( EnsureNMTState::eT_Passive, eNMTS_PreOperational ) );
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Mode of Operation", 0x6060, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU8( 1 );     // Use profile position mode
-        
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Profile Velocity", 0x6081, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU32( 500 );
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Motion profile type", 0x6086, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU16( 1 );    // Use a sinusoidal profile
-    
-    /*actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Parameter", 0x1800, 1 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU32( 0x180 + MASTER_NODE_ID );
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Transmission Type", 0x1800, 2 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU8( 255 );    // Asynchronous transfer
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Inhibition time", 0x1800, 3 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU16( 100 );    // Should limit transfer to once every 10ms
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Map - Num Items", 0x1A00, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU8( 0 );    // Disable PDO first
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Map - Item 1", 0x1A00, 1 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU32( ( 0x6064 << 16 ) | ( 0x00 << 8 ) | 32 );    // Actual position
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Transmit PDO 1 Map - Num Items", 0x1A00, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU8( 1 );    // Reenable PDO
-    */
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU16( 0x0006 );    // Shutdown
-    
-    actionList[ actionIdx ] = CANMotorControllerAction::CreateSDOFieldAction(
-        SDOField( SDOField::eT_Write, "Controlword", 0x6040, 0 ) );
-    actionList[ actionIdx++ ].mSDOField.SetU16( 0x000F );    // Switch On
-    
-    S32 numActions = actionIdx;
-    assert( ARRAY_LENGTH( actionList ) == numActions );
-    
     for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
     {
-        for ( S32 i = 0; i < numActions; i++ )
-        {
-            mMotorControllers[ nodeId ].AddConfigurationAction( 
-                actionList[ i ] );
-        }
+        mMotorControllers[ nodeId ].SetConfiguration( CANMotorController::eC_PositionControl ); 
     }
 }
 

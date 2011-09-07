@@ -196,14 +196,14 @@ void CANMotorController::Update( S32 frameIdx )
                         mbFaultResetRequested = false;
                         mRunningTask = eRT_SendFaultReset;
                     }
-                    /*else if ( mbNewProfileVelocityRequested )
+                    else if ( mbNewProfileVelocityRequested )
                     {
                         mSetProfileVelocityCommands[ 0 ].SetU32( mNewProfileVelocity );
                         mpRunningTaskCommands = mSetProfileVelocityCommands;
                         mCurRunningTaskCommandIdx = 0;
                         mbNewProfileVelocityRequested = false;
                         mRunningTask = eRT_SetProfileVelocity;
-                    }*/
+                    }
                     else if ( mbNewDesiredAngleRequested )
                     {
                         mSetDesiredAngleCommands[ 0 ].SetS32( mNewDesiredAngle );

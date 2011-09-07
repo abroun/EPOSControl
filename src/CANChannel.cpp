@@ -134,21 +134,23 @@ void CANChannel::ConfigureAllMotorControllersForPositionControl()
 }
 
 //------------------------------------------------------------------------------
-void CANChannel::GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut )
+void CANChannel::GetMotorControllerData( MotorControllerData* pDataBuffer, S32* pBufferSizeOut )
 {
-    S32 numAngles = 0;
+    S32 bufferSize = 0;
     
     for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
     {
-        if ( mMotorControllers[ nodeId ].IsAngleValid() )
+        if ( mMotorControllers[ nodeId ].IsPresent() )
         {
-            pAngleBuffer[ numAngles ].mNodeId = nodeId;
-            pAngleBuffer[ numAngles ].mAngle = mMotorControllers[ nodeId ].GetAngle();
-            numAngles++;
+            pDataBuffer[ bufferSize ].mNodeId = nodeId;
+            pDataBuffer[ bufferSize ].mState = mMotorControllers[ nodeId ].GetState();
+            pDataBuffer[ bufferSize ].mAngle = mMotorControllers[ nodeId ].GetAngle();
+            pDataBuffer[ bufferSize ].mbAngleValid = mMotorControllers[ nodeId ].IsAngleValid();
+            bufferSize++;
         }
     }
     
-    *pBufferSizeOut = numAngles;
+    *pBufferSizeOut = bufferSize;
 }
 
 //------------------------------------------------------------------------------

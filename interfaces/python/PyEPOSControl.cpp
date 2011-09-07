@@ -18,30 +18,43 @@ static CANChannel* gpChannel = NULL;
 //------------------------------------------------------------------------------
 typedef struct 
 {
-    PyObject_HEAD    
+    PyObject_HEAD
+    
+    // Motor controller states
+    S32 MCS_INACTIVE;
+    S32 MCS_SETTING_UP;
+    S32 MCS_RUNNING;
+    S32 MCS_HOMING;
 } EPOSControlObject;
 
 //------------------------------------------------------------------------------
-// Returns the current joint angles of the motor controllers on the CAN
-// channels. The joint angles are returned in a dictionary where the keys
-// are the node indices of the CAN nodes and these dictionaries are in turn
-// returned in a dictionary where the keys are the index of the CAN channel
-static PyObject* getJointAngles( PyObject* pSelf, PyObject* args )
+// Returns data for the motor controllers on the CAN channels.
+// The data is returned as a dictionary of CAN channels. Each CAN channel
+// is then a dictionary containing the data tuples
+//
+//         ( controllerState, angleValid, angle )
+//
+static PyObject* getMotorControllerData( PyObject* pSelf, PyObject* args )
 {
     // Get the information from the EPOS control library
-    AngleData angleData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
-    S32 numAngles = 0;
-    gpChannel->GetMotorAngles( angleData, &numAngles );
+    MotorControllerData controllerData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
+    S32 numControllers = 0;
+    gpChannel->GetMotorControllerData( controllerData, &numControllers );
     
     // Build the information into dictionaries
     PyObject* pNodeDict = PyDict_New();
-    for ( S32 angleIdx = 0; angleIdx < numAngles; angleIdx++ )
+    for ( S32 i = 0; i < numControllers; i++ )
     {
-        PyObject* pKey = PyString_FromFormat( "%i", angleData[ angleIdx ].mNodeId );
-        PyObject* pValue = PyInt_FromLong( angleData[ angleIdx ].mAngle );
-        PyDict_SetItem( pNodeDict, pKey, pValue );
+        PyObject* pKey = PyString_FromFormat( "%i", controllerData[ i ].mNodeId );
+        
+        PyObject *pTuple = PyTuple_New( 3 );
+        PyTuple_SetItem( pTuple, 0, PyInt_FromLong( controllerData[ i ].mState ) );
+        PyTuple_SetItem( pTuple, 1, PyBool_FromLong( controllerData[ i ].mbAngleValid ) );
+        PyTuple_SetItem( pTuple, 2, PyInt_FromLong( controllerData[ i ].mAngle ) );
+
+        PyDict_SetItem( pNodeDict, pKey, pTuple );
         Py_DECREF( pKey );
-        Py_DECREF( pValue );
+        Py_DECREF( pTuple );
     }
     
     PyObject* pChannelDict = PyDict_New();
@@ -180,6 +193,12 @@ static PyObject* EPOSControlObject_new( PyTypeObject *type,
 static int EPOSControlObject_init( EPOSControlObject *self, 
                                    PyObject *args, PyObject *kwds )
 {
+    // Setup 'constants'
+    self->MCS_INACTIVE = CANMotorController::eS_Inactive;
+    self->MCS_SETTING_UP = CANMotorController::eS_SettingUp;
+    self->MCS_RUNNING = CANMotorController::eS_Running;
+    self->MCS_HOMING = CANMotorController::eS_Homing;
+    
     // Hacky check
     if ( NULL != gpChannel )
     {
@@ -209,7 +228,7 @@ static int EPOSControlObject_init( EPOSControlObject *self,
 //------------------------------------------------------------------------------
 static PyMethodDef EPOSControlObjectMethods[] = 
 {
-    { "getJointAngles", getJointAngles, METH_VARARGS, "Get the motor controller joint angles" },
+    { "getMotorControllerData", getMotorControllerData, METH_VARARGS, "Get data about the motor controllers" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
     { "setMotorProfileVelocity", setMotorProfileVelocity, METH_VARARGS, "Sets the speed in encoder ticks per second at which the motors move" },
     { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
@@ -220,6 +239,11 @@ static PyMethodDef EPOSControlObjectMethods[] =
 //------------------------------------------------------------------------------
 static PyMemberDef EPOSControlObjectMembers[] = 
 {
+    { (char*)"MCS_INACTIVE", T_INT, offsetof(EPOSControlObject, MCS_INACTIVE), 0, (char*)"'Inactive' Motor Controller state"},
+    { (char*)"MCS_SETTING_UP", T_INT, offsetof(EPOSControlObject, MCS_SETTING_UP), 0, (char*)"'Setting Up' Motor Controller state"},
+    { (char*)"MCS_RUNNING", T_INT, offsetof(EPOSControlObject, MCS_RUNNING), 0, (char*)"'Running' Motor Controller state"},
+    { (char*)"MCS_HOMING", T_INT, offsetof(EPOSControlObject, MCS_HOMING), 0, (char*)"'Homing' Motor Controller state"},
+
     {NULL}  /* Sentinel */
 };
 
@@ -282,6 +306,7 @@ PyMODINIT_FUNC initPyEPOSControl()
     }
     
     PyObject * pModule = Py_InitModule( "PyEPOSControl", PyEPOSControlMethods );
+    
     
     Py_INCREF( &EPOSControlObjectType );
     PyModule_AddObject( pModule, "EPOSControl", (PyObject *)&EPOSControlObjectType );

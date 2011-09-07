@@ -39,7 +39,7 @@ CANMotorController::CANMotorController()
     
     // Set desired angle
     mSetDesiredAngleCommands[ 0 ] = SDOField::CreateWrite_S32( "Target Position", 0x607A, 0, 0 );
-    mSetDesiredAngleCommands[ 1 ] = SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x000F );  // Start positioning
+    mSetDesiredAngleCommands[ 1 ] = SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x001F );  // Start positioning
     mSetDesiredAngleCommands[ 2 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
 
     // Set profile velocity
@@ -211,8 +211,6 @@ void CANMotorController::Update( S32 frameIdx )
                         mCurRunningTaskCommandIdx = 0;
                         mbNewDesiredAngleRequested = false;
                         mRunningTask = eRT_SetDesiredAngle;
-                        
-                        printf( "Setting desired angle to %i\n", mNewDesiredAngle );
                     }
                 }
                 

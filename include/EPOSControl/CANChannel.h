@@ -12,10 +12,12 @@
 #include "EPOSControl/CANMotorController.h"
 
 //------------------------------------------------------------------------------
-struct AngleData
+struct MotorControllerData
 {
     U8 mNodeId;
+    S32 mState;
     S32 mAngle;     // Angle in encoder tick
+    bool mbAngleValid;
 };
 
 //------------------------------------------------------------------------------
@@ -50,9 +52,8 @@ class CANChannel
     public: void ConfigureAllMotorControllersForPositionControl();
     
     //--------------------------------------------------------------------------
-    // Returns the list of angles for all nodes which have recieved an angle
-    // from their EPOS motor controller
-    public: void GetMotorAngles( AngleData* pAngleBuffer, S32* pBufferSizeOut );
+    // Gets information about all of the EPOS motor controllers
+    public: void GetMotorControllerData( MotorControllerData* pDataBuffer, S32* pBufferSizeOut );
     
     public: void SetMotorAngle( U8 nodeId, S32 angle );
     public: void SetMotorProfileVelocity( U32 velocity );

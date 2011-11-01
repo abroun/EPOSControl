@@ -39,7 +39,7 @@ CANMotorController::CANMotorController()
     
     // Set desired angle
     mSetDesiredAngleCommands[ 0 ] = SDOField::CreateWrite_S32( "Target Position", 0x607A, 0, 0 );
-    mSetDesiredAngleCommands[ 1 ] = SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x001F );  // Start positioning
+    mSetDesiredAngleCommands[ 1 ] = SDOField::CreateWrite_U16( "Controlword", 0x6040, 0, 0x003F );  // Start positioning
     mSetDesiredAngleCommands[ 2 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
 
     // Set profile velocity
@@ -232,6 +232,8 @@ void CANMotorController::Update( S32 frameIdx )
                             if ( ProcessSDOWrite( *pCurCommand ) )
                             {
                                 mCurRunningTaskCommandIdx++;
+                                //printf( "Processed write %i for task of type %i\n", mCurRunningTaskCommandIdx, mRunningTask );
+                                
                                 pCurCommand = &mpRunningTaskCommands[ mCurRunningTaskCommandIdx ];
                             }
                         }
@@ -239,6 +241,11 @@ void CANMotorController::Update( S32 frameIdx )
                         if ( SDOField::eT_Invalid == pCurCommand->mType
                             && eSCS_Inactive == mSdoWriteState )
                         {
+//                             if ( eRT_SetDesiredAngle == mRunningTask )
+//                             {
+//                                 printf( "The angle was sent\n" );
+//                             }
+                            
                             // All commands have been sent and received
                             mRunningTask = eRT_None;
                         }
@@ -358,16 +365,32 @@ void CANMotorController::OnSDOFieldReadComplete( U8* pData, U32 numBytes )
 //------------------------------------------------------------------------------
 void CANMotorController::SetDesiredAngle( S32 desiredAngle, S32 frameIdx )
 {
+    if ( (eRT_SetDesiredAngle == mRunningTask || mbNewDesiredAngleRequested)
+        && desiredAngle == mNewDesiredAngle )
+    {
+        // We're already trying to set the desired angle so ignore the request
+        //printf( "Ignoring request\n" );
+        return;
+    }
+    
     mNewDesiredAngle = desiredAngle;
     mbNewDesiredAngleRequested = true;
+    //printf( "Got new angle of %i encoder ticks\n", desiredAngle );
 }
 
 //------------------------------------------------------------------------------
 void CANMotorController::SetProfileVelocity( U32 profileVelocity )
 {
+    if ( (eRT_SetProfileVelocity == mRunningTask || mbNewProfileVelocityRequested)
+        && profileVelocity == mNewProfileVelocity )
+    {
+        // We're already trying to set the desired angle so ignore the request
+        //printf( "Ignoring speed request\n" );
+        return;
+    }
+    
     mNewProfileVelocity = profileVelocity;
     mbNewProfileVelocityRequested = true;
-    
 }
 
 //------------------------------------------------------------------------------

@@ -9,6 +9,8 @@
 #include <math.h>
 #include "EPOSControl/EPOSControl.h"
 
+//#define GP_CHANNEL_IDX 1
+//#define GP_CHANNEL_IDX_STR "1"
 #define GP_CHANNEL_IDX 2
 #define GP_CHANNEL_IDX_STR "2"
 

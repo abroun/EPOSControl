@@ -1,6 +1,8 @@
 cmake_minimum_required( VERSION 2.8 )
 PROJECT( eposcontrol )
 
+SET( CMAKE_CXX_FLAGS "-fPIC" )
+
 # Setup installation settings for library RPATHs
 # use, i.e. don't skip the full RPATH for the build tree
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)

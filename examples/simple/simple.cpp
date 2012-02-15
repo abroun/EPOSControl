@@ -35,10 +35,10 @@ int main()
         return -1;
     }
     
-    CANChannel* pChannel = EPOS_OpenCANChannel( "32", eBR_1M );
+    CANChannel* pChannel = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M );
     if ( NULL == pChannel )
     {
-        fprintf( stderr, "Error: Unable top open CAN bus channel\n" );
+        fprintf( stderr, "Error: Unable to open CAN bus channel\n" );
         return -1;
     }
 

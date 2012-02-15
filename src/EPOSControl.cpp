@@ -49,7 +49,7 @@ void EPOS_DeinitLibrary()
 }
 
 //------------------------------------------------------------------------------
-CANChannel* EPOS_OpenCANChannel( const char* canDevice, eBaudRate baudRate )
+CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate )
 {
     CANChannel* pResult = NULL;
     
@@ -58,13 +58,14 @@ CANChannel* EPOS_OpenCANChannel( const char* canDevice, eBaudRate baudRate )
     {
         if ( !gbChannelInUse[ channelIdx ] )
         {
-            if ( gCANChannels[ channelIdx ].Init( canDevice, baudRate ) )
+            if ( gCANChannels[ channelIdx ].Init( driverLibraryName, canDevice, baudRate ) )
             {
                 // A free channel has been found and initialised
                 pResult = &gCANChannels[ channelIdx ];
                 gbChannelInUse[ channelIdx ] = true;
-                break;
             }
+
+            break;
         }
     }
     

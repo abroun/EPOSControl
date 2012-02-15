@@ -1,8 +1,12 @@
 # Directories
 build
 .kdev4
+.settings
 
 # Files
 *~
 *.kdev4
 *.pyc
+.cproject
+.project
+

@@ -16,7 +16,7 @@
 bool EPOS_InitLibaray();
 void EPOS_DeinitLibrary();
 
-CANChannel* EPOS_OpenCANChannel( const char* canDevice, eBaudRate baudRate );
+CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate );
 void EPOS_CloseCANChannel( CANChannel* pChannel );
 
 #endif // EPOS_CONTROL_H

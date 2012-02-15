@@ -28,7 +28,7 @@ class CANChannel
     public: ~CANChannel();
     
     //--------------------------------------------------------------------------
-    public: bool Init( const char* canDevice, eBaudRate baudRate );
+    public: bool Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate );
     public: void Deinit();
     
     //--------------------------------------------------------------------------

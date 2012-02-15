@@ -60,7 +60,7 @@ static PyObject* getMotorControllerData( PyObject* pSelf, PyObject* args )
     }
     
     PyObject* pChannelDict = PyDict_New();
-    PyDict_SetItem( pChannelDict, PyString_FromString( GP_CHANNEL_IDX_STR ), pNodeDict );
+    PyDict_SetItem( pChannelDict, PyString_FromFormat( "%i", GP_CHANNEL_IDX ), pNodeDict );
     Py_DECREF( pNodeDict );
     
     return pChannelDict;
@@ -215,13 +215,13 @@ static int EPOSControlObject_init( EPOSControlObject *self,
         return -1;
     }
     
-    gpChannel = EPOS_OpenCANChannel( "32", eBR_1M );
+    gpChannel = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M );
     if ( NULL == gpChannel )
     {
         fprintf( stderr, "Error: Unable top open CAN bus channel\n" );
         return -1;
     }
-    
+
     gpChannel->ConfigureAllMotorControllersForPositionControl();
     
     return 0;

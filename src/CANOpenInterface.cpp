@@ -172,7 +172,7 @@ void COI_DeinitCANOpenInterface()
 }
 
 //------------------------------------------------------------------------------
-bool COI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate baudRate )
+bool COI_InitCANChannel( CANChannel* pChannel, const char* driverLibraryName, const char* canDevice, eBaudRate baudRate )
 {   
     assert( baudRate >= 0 && baudRate < eBR_NumBaudRates );
     assert( NULL != pChannel );
@@ -205,7 +205,8 @@ bool COI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate 
         callbacks.mPostEmergencyCB = MasterPostEmergency;
         callbacks.mPostSlaveBootupCB = MasterPostSlaveBootup;
         
-        COM_CanChannelHandle channelHandle = COM_OpenChannel( canDevice, BAUD_RATES[ baudRate ], callbacks );
+        COM_CanChannelHandle channelHandle = COM_OpenChannel(
+            driverLibraryName, canDevice, BAUD_RATES[ baudRate ], callbacks );
         if ( NULL == channelHandle )
         {
             fprintf( stderr, "Error: Unable to start CAN comunications\n" );

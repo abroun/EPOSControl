@@ -316,11 +316,11 @@ const char* CANChannel::GetEposErrorMessage( U16 errCode, U8 errReg )
 }
    
 //------------------------------------------------------------------------------
-bool CANChannel::Init( const char* canDevice, eBaudRate baudRate )
+bool CANChannel::Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate )
 {
     if ( !mbInitialised )
     {
-        if ( !COI_InitCANChannel( this, canDevice, baudRate ) )
+        if ( !COI_InitCANChannel( this, driverLibraryName, canDevice, baudRate ) )
         {
             fprintf( stderr, "Error: Unable set up CAN bus\n" );
             goto Finished;

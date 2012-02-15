@@ -18,7 +18,8 @@ bool COI_InitCANOpenInterface();
 void COI_DeinitCANOpenInterface();
 
 //------------------------------------------------------------------------------
-bool COI_InitCANChannel( CANChannel* pChannel, const char* canDevice, eBaudRate baudRate );
+bool COI_InitCANChannel( CANChannel* pChannel,
+    const char* driverLibraryName, const char* canDevice, eBaudRate baudRate );
 void COI_DeinitCANChannel( CANChannel* pChannel );
 
 //------------------------------------------------------------------------------

@@ -91,7 +91,6 @@ TARGET_LINK_LIBRARIES( EPOSControlPython
     EPOSControl
     CanOpenMaster
     boost_thread
-    ftdi        # Driver libraries
     )
 SET_TARGET_PROPERTIES( EPOSControlPython PROPERTIES PREFIX "" )
 SET_TARGET_PROPERTIES( EPOSControlPython PROPERTIES LINK_FLAGS ${CAN_OPEN_MASTER_LINK_FLAGS} )
@@ -108,7 +107,6 @@ TARGET_LINK_LIBRARIES( simple
     EPOSControl
     CanOpenMaster
     boost_thread
-    ftdi        # Driver libraries
     )
 
 INSTALL( TARGETS simple

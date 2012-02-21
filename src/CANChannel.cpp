@@ -28,56 +28,57 @@ CANChannel::~CANChannel()
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenHeartbeatError( U8 error )
 {
-    printf( "Heartbeat error called\n" );
+    printf( "Channel %i: Heartbeat error called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenInitialisation()
 {
-    printf( "Initialisation called\n" );
+    printf( "Channel %i: Initialisation called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPreOperational()
 {
-    printf( "PreOperational called\n" );
+    printf( "Channel %i: PreOperational called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenOperational()
 {
-    printf( "Operational called\n" );
+    printf( "Channel %i: Operational called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenStopped()
 {
-    printf( "Stopped called\n" );
+    printf( "Channel %i: Stopped called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostSync()
 {
-    printf( "PostSync called\n" );
+    printf( "Channel %i: PostSync called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostTPDO()
 {
-    printf( "PostTPDO called\n" );
+    printf( "Channel %i: PostTPDO called\n", mChannelIdx );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostEmergency( U8 nodeId, U16 errCode, U8 errReg )
 {
-    printf( "PostEmergency called for node %i - Error: %s\n", 
-            nodeId, GetEposErrorMessage( errCode, errReg ) );
+    printf( "Channel %i: PostEmergency called for node %i - Error: %s\n",
+        mChannelIdx, nodeId, GetEposErrorMessage( errCode, errReg ) );
 }
 
 //------------------------------------------------------------------------------
 void CANChannel::OnCANOpenPostSlaveBootup( U8 nodeId )
 {
-    printf( "PostSlaveBootup for node %i called at frame %i\n", nodeId, mFrameIdx );
+    printf( "Channel %i: PostSlaveBootup for node %i called at frame %i\n",
+        mChannelIdx, nodeId, mFrameIdx );
     
     mMotorControllers[ nodeId ].TellAboutNMTState( eNMTS_PreOperational );
 }
@@ -316,7 +317,7 @@ const char* CANChannel::GetEposErrorMessage( U16 errCode, U8 errReg )
 }
    
 //------------------------------------------------------------------------------
-bool CANChannel::Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate )
+bool CANChannel::Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate, S32 channelIdx )
 {
     if ( !mbInitialised )
     {
@@ -333,6 +334,7 @@ bool CANChannel::Init( const char* driverLibraryName, const char* canDevice, eBa
         
         mStartingNodeId = 0;
         mFrameIdx = 0;
+        mChannelIdx = channelIdx;
         
         mbInitialised = true;
     }

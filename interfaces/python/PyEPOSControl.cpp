@@ -9,13 +9,11 @@
 #include <math.h>
 #include "EPOSControl/EPOSControl.h"
 
-//#define GP_CHANNEL_IDX 1
-//#define GP_CHANNEL_IDX_STR "1"
-#define GP_CHANNEL_IDX 2
-#define GP_CHANNEL_IDX_STR "2"
+#define NUM_CHANNELS 2
 
 //------------------------------------------------------------------------------
-static CANChannel* gpChannel = NULL;
+static bool gbActive = false;
+static CANChannel* gpChannels[ NUM_CHANNELS ] = { NULL };
 
 //------------------------------------------------------------------------------
 typedef struct 
@@ -39,29 +37,33 @@ typedef struct
 static PyObject* getMotorControllerData( PyObject* pSelf, PyObject* args )
 {
     // Get the information from the EPOS control library
-    MotorControllerData controllerData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
-    S32 numControllers = 0;
-    gpChannel->GetMotorControllerData( controllerData, &numControllers );
-    
-    // Build the information into dictionaries
-    PyObject* pNodeDict = PyDict_New();
-    for ( S32 i = 0; i < numControllers; i++ )
-    {
-        PyObject* pKey = PyString_FromFormat( "%i", controllerData[ i ].mNodeId );
-        
-        PyObject *pTuple = PyTuple_New( 3 );
-        PyTuple_SetItem( pTuple, 0, PyInt_FromLong( controllerData[ i ].mState ) );
-        PyTuple_SetItem( pTuple, 1, PyBool_FromLong( controllerData[ i ].mbAngleValid ) );
-        PyTuple_SetItem( pTuple, 2, PyInt_FromLong( controllerData[ i ].mAngle ) );
-
-        PyDict_SetItem( pNodeDict, pKey, pTuple );
-        Py_DECREF( pKey );
-        Py_DECREF( pTuple );
-    }
-    
     PyObject* pChannelDict = PyDict_New();
-    PyDict_SetItem( pChannelDict, PyString_FromFormat( "%i", GP_CHANNEL_IDX ), pNodeDict );
-    Py_DECREF( pNodeDict );
+    
+    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
+    {
+        MotorControllerData controllerData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
+        S32 numControllers = 0;
+        gpChannels[ channelIdx ]->GetMotorControllerData( controllerData, &numControllers );
+        
+        // Build the information into dictionaries
+        PyObject* pNodeDict = PyDict_New();
+        for ( S32 i = 0; i < numControllers; i++ )
+        {
+            PyObject* pKey = PyString_FromFormat( "%i", controllerData[ i ].mNodeId );
+
+            PyObject *pTuple = PyTuple_New( 3 );
+            PyTuple_SetItem( pTuple, 0, PyInt_FromLong( controllerData[ i ].mState ) );
+            PyTuple_SetItem( pTuple, 1, PyBool_FromLong( controllerData[ i ].mbAngleValid ) );
+            PyTuple_SetItem( pTuple, 2, PyInt_FromLong( controllerData[ i ].mAngle ) );
+
+            PyDict_SetItem( pNodeDict, pKey, pTuple );
+            Py_DECREF( pKey );
+            Py_DECREF( pTuple );
+        }
+    
+        PyDict_SetItem( pChannelDict, PyString_FromFormat( "%i", channelIdx + 1 ), pNodeDict );
+        Py_DECREF( pNodeDict );
+    }
     
     return pChannelDict;
 }
@@ -109,9 +111,11 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
             return NULL;
         }
         
-        if ( GP_CHANNEL_IDX == channelIdx )
+        channelIdx--;   // Convert to 0 indexed
+
+        if ( channelIdx >= 0 && channelIdx < NUM_CHANNELS )
         {
-            gpChannel->SetMotorAngle( (U8)nodeId, angle );
+            gpChannels[ channelIdx ]->SetMotorAngle( (U8)nodeId, angle );
         }
     }
     
@@ -129,7 +133,11 @@ static PyObject* setMotorProfileVelocity( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    gpChannel->SetMotorProfileVelocity( (U32)profileVelocity );
+    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
+    {
+        gpChannels[ channelIdx ]->SetMotorProfileVelocity( (U32)profileVelocity );
+    }
+
     
     Py_RETURN_NONE;
 }
@@ -146,11 +154,16 @@ static PyObject* sendFaultReset( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    if ( GP_CHANNEL_IDX == channelIdx )
+    channelIdx--;   // Convert to 0 indexed
+
+    if ( channelIdx < 0 || channelIdx >= NUM_CHANNELS )
     {
-        gpChannel->SendFaultReset( (U8)nodeId );
+        PyErr_SetString( PyExc_Exception, "Invalid channel index" );
+        return NULL;
     }
     
+    gpChannels[ channelIdx ]->SendFaultReset( (U8)nodeId );
+
     Py_RETURN_NONE;
 }
 
@@ -165,11 +178,16 @@ static PyObject* updateChannel( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    if ( GP_CHANNEL_IDX == channelIdx )
+    channelIdx--;   // Convert to 0 indexed
+
+    if ( channelIdx < 0 || channelIdx >= NUM_CHANNELS )
     {
-        gpChannel->Update();
+        PyErr_SetString( PyExc_Exception, "Invalid channel index" );
+        return NULL;
     }
     
+    gpChannels[ channelIdx ]->Update();
+
     Py_RETURN_NONE;
 }
 
@@ -177,7 +195,10 @@ static PyObject* updateChannel( PyObject* pSelf, PyObject* args )
 static void EPOSControlObject_dealloc( EPOSControlObject* self )
 {
     // Shut down the EPOSControl library
-    EPOS_CloseCANChannel( gpChannel );
+    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
+    {
+        EPOS_CloseCANChannel( gpChannels[ channelIdx ] );
+    }
     EPOS_DeinitLibrary();
     
     self->ob_type->tp_free((PyObject*)self);
@@ -201,28 +222,38 @@ static int EPOSControlObject_init( EPOSControlObject *self,
     self->MCS_RUNNING = CANMotorController::eS_Running;
     self->MCS_HOMING = CANMotorController::eS_Homing;
     
-    // Hacky check
-    if ( NULL != gpChannel )
+    if ( gbActive )
     {
-        fprintf( stderr, "Error: Channel already in use\n" );
+        fprintf( stderr, "Error: Module already in use\n" );
         return -1;
     }
     
     // Start up the EPOSControl library
-    if ( !EPOS_InitLibaray() )
+    if ( !EPOS_InitLibrary() )
     {
         fprintf( stderr, "Error: Unable to open EPOSControl library\n" );
         return -1;
     }
     
-    gpChannel = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M );
-    if ( NULL == gpChannel )
+    // Initialise the channels
+    gpChannels[ 0 ] = EPOS_OpenCANChannel( "libSocketCanDriver.so", "can0", eBR_1M );
+    if ( NULL == gpChannels[ 0 ] )
     {
-        fprintf( stderr, "Error: Unable top open CAN bus channel\n" );
+        fprintf( stderr, "Error: Unable to open CAN bus channel 1\n" );
         return -1;
     }
 
-    gpChannel->ConfigureAllMotorControllersForPositionControl();
+    gpChannels[ 1 ] = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M );
+    if ( NULL == gpChannels[ 1 ] )
+    {
+        fprintf( stderr, "Error: Unable to open CAN bus channel 2\n" );
+        return -1;
+    }
+
+    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
+    {
+        gpChannels[ channelIdx ]->ConfigureAllMotorControllersForPositionControl();
+    }
     
     return 0;
 }

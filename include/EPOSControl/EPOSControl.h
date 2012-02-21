@@ -13,7 +13,7 @@
 #include "CANChannel.h"
 
 //------------------------------------------------------------------------------
-bool EPOS_InitLibaray();
+bool EPOS_InitLibrary();
 void EPOS_DeinitLibrary();
 
 CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate );

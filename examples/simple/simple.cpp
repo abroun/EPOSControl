@@ -29,7 +29,7 @@ int main()
 #endif
     
     // Start up the EPOSControl library
-    if ( !EPOS_InitLibaray() )
+    if ( !EPOS_InitLibrary() )
     {
         fprintf( stderr, "Error: Unable to open EPOSControl library\n" );
         return -1;

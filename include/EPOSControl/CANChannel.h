@@ -28,7 +28,7 @@ class CANChannel
     public: ~CANChannel();
     
     //--------------------------------------------------------------------------
-    public: bool Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate );
+    public: bool Init( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate, S32 channelIdx=0 );
     public: void Deinit();
     
     //--------------------------------------------------------------------------
@@ -63,14 +63,18 @@ class CANChannel
     public: static const char* GetEposErrorMessage( U16 errCode, U8 errReg );
     
     //--------------------------------------------------------------------------
+    public: S32 GetFrameIdx() const { return mFrameIdx; }
+    public: S32 GetChannelIdx() const { return mChannelIdx; }
+
+    //--------------------------------------------------------------------------
     public: static const U8 ALL_MOTOR_CONTROLLERS = 0;
     public: static const U8 MAX_NUM_MOTOR_CONTROLLERS = 128;
     private: CANMotorController mMotorControllers[ MAX_NUM_MOTOR_CONTROLLERS ];
     private: bool mbInitialised;
-    private: U8 mStartingNodeId;   // See OnCANUpdate for explanation
+    private: U8 mStartingNodeId;    // See OnCANUpdate for explanation
     
     private: S32 mFrameIdx;
-    public: S32 GetFrameIdx() const { return mFrameIdx; }
+    private: S32 mChannelIdx;       // Lets client code distinguish between channels
 };
 
 #endif // CAN_CHANNEL_H

@@ -23,7 +23,7 @@ static CANChannel gCANChannels[ MAX_NUM_CAN_CHANNELS ];
 static bool gbChannelInUse[ MAX_NUM_CAN_CHANNELS ] = { false };
 
 //------------------------------------------------------------------------------
-bool EPOS_InitLibaray()
+bool EPOS_InitLibrary()
 {
     if ( !gbInitialised )
     {
@@ -58,7 +58,7 @@ CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canD
     {
         if ( !gbChannelInUse[ channelIdx ] )
         {
-            if ( gCANChannels[ channelIdx ].Init( driverLibraryName, canDevice, baudRate ) )
+            if ( gCANChannels[ channelIdx ].Init( driverLibraryName, canDevice, baudRate, channelIdx + 1 ) )
             {
                 // A free channel has been found and initialised
                 pResult = &gCANChannels[ channelIdx ];

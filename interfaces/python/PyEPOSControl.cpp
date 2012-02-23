@@ -41,6 +41,11 @@ static PyObject* getMotorControllerData( PyObject* pSelf, PyObject* args )
     
     for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
     {
+        if ( NULL == gpChannels[ channelIdx ] )
+        {
+            continue;
+        }
+
         MotorControllerData controllerData[ CANChannel::MAX_NUM_MOTOR_CONTROLLERS ];
         S32 numControllers = 0;
         gpChannels[ channelIdx ]->GetMotorControllerData( controllerData, &numControllers );
@@ -113,7 +118,8 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
         
         channelIdx--;   // Convert to 0 indexed
 
-        if ( channelIdx >= 0 && channelIdx < NUM_CHANNELS )
+        if ( channelIdx >= 0 && channelIdx < NUM_CHANNELS
+            && NULL != gpChannels[ channelIdx ] )
         {
             gpChannels[ channelIdx ]->SetMotorAngle( (U8)nodeId, angle );
         }
@@ -135,10 +141,47 @@ static PyObject* setMotorProfileVelocity( PyObject* pSelf, PyObject* args )
     
     for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
     {
-        gpChannels[ channelIdx ]->SetMotorProfileVelocity( (U32)profileVelocity );
+        if ( NULL != gpChannels[ channelIdx ] )
+        {
+            gpChannels[ channelIdx ]->SetMotorProfileVelocity( (U32)profileVelocity );
+        }
     }
 
     
+    Py_RETURN_NONE;
+}
+
+//------------------------------------------------------------------------------
+// Sets the maximum following error for a motor
+static PyObject* setMaximumFollowingError( PyObject* pSelf, PyObject* args )
+{
+    S32 channelIdx;
+    S32 nodeId;
+    S32 maximumFollowingError;
+    if ( !PyArg_ParseTuple( args, "iii", &channelIdx, &nodeId, &maximumFollowingError ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+
+    if ( maximumFollowingError < 0 )
+    {
+        maximumFollowingError = 0;
+    }
+
+    channelIdx--;   // Convert to 0 indexed
+
+    if ( channelIdx < 0 || channelIdx >= NUM_CHANNELS )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid channel index" );
+        return NULL;
+    }
+
+    if ( NULL != gpChannels[ channelIdx ] )
+    {
+        gpChannels[ channelIdx ]->SetMaximumFollowingError( (U8)nodeId, (U32)maximumFollowingError );
+    }
+
     Py_RETURN_NONE;
 }
 
@@ -162,7 +205,10 @@ static PyObject* sendFaultReset( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    gpChannels[ channelIdx ]->SendFaultReset( (U8)nodeId );
+    if ( NULL != gpChannels[ channelIdx ] )
+    {
+        gpChannels[ channelIdx ]->SendFaultReset( (U8)nodeId );
+    }
 
     Py_RETURN_NONE;
 }
@@ -186,7 +232,10 @@ static PyObject* updateChannel( PyObject* pSelf, PyObject* args )
         return NULL;
     }
     
-    gpChannels[ channelIdx ]->Update();
+    if ( NULL != gpChannels[ channelIdx ] )
+    {
+        gpChannels[ channelIdx ]->Update();
+    }
 
     Py_RETURN_NONE;
 }
@@ -197,7 +246,11 @@ static void EPOSControlObject_dealloc( EPOSControlObject* self )
     // Shut down the EPOSControl library
     for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
     {
-        EPOS_CloseCANChannel( gpChannels[ channelIdx ] );
+        if ( NULL != gpChannels[ channelIdx ] )
+        {
+            EPOS_CloseCANChannel( gpChannels[ channelIdx ] );
+            gpChannels[ channelIdx ] = NULL;
+        }
     }
     EPOS_DeinitLibrary();
     
@@ -236,23 +289,24 @@ static int EPOSControlObject_init( EPOSControlObject *self,
     }
     
     // Initialise the channels
-    gpChannels[ 0 ] = EPOS_OpenCANChannel( "libSocketCanDriver.so", "can0", eBR_1M );
+    gpChannels[ 0 ] = EPOS_OpenCANChannel( "libSocketCanDriver.so", "can0", eBR_1M, 0 );
     if ( NULL == gpChannels[ 0 ] )
     {
-        fprintf( stderr, "Error: Unable to open CAN bus channel 1\n" );
-        return -1;
+        fprintf( stderr, "Warning: Unable to open CAN bus channel 1\n" );
     }
 
-    gpChannels[ 1 ] = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M );
+    gpChannels[ 1 ] = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M, 1 );
     if ( NULL == gpChannels[ 1 ] )
     {
-        fprintf( stderr, "Error: Unable to open CAN bus channel 2\n" );
-        return -1;
+        fprintf( stderr, "Warning: Unable to open CAN bus channel 2\n" );
     }
 
     for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
     {
-        gpChannels[ channelIdx ]->ConfigureAllMotorControllersForPositionControl();
+        if ( NULL != gpChannels[ channelIdx ] )
+        {
+            gpChannels[ channelIdx ]->ConfigureAllMotorControllersForPositionControl();
+        }
     }
     
     return 0;
@@ -264,6 +318,7 @@ static PyMethodDef EPOSControlObjectMethods[] =
     { "getMotorControllerData", getMotorControllerData, METH_VARARGS, "Get data about the motor controllers" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
     { "setMotorProfileVelocity", setMotorProfileVelocity, METH_VARARGS, "Sets the speed in encoder ticks per second at which the motors move" },
+    { "setMaximumFollowingError", setMaximumFollowingError, METH_VARARGS, "Sets the maximum following error for a motor" },
     { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
     { "updateChannel", updateChannel, METH_VARARGS, "Updates a given channel" },
     {NULL}  /* Sentinel */

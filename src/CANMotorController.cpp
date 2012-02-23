@@ -45,6 +45,10 @@ CANMotorController::CANMotorController()
     // Set profile velocity
     mSetProfileVelocityCommands[ 0 ] = SDOField::CreateWrite_U32( "Profile Velocity", 0x6081, 0, 500 ),
     mSetProfileVelocityCommands[ 1 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
+
+    // Set maximum following error
+    mSetMaxFollowingErrorCommands[ 0 ] = SDOField::CreateWrite_U32( "Maximum Following Error", 0x6065, 0, 2000 ),
+    mSetMaxFollowingErrorCommands[ 1 ] = SDOField( SDOField::eT_Invalid, "LIST END MARKER", 0, 0 );
 }
 
 //------------------------------------------------------------------------------
@@ -81,6 +85,7 @@ bool CANMotorController::Init( CANChannel* pOwner, U8 nodeId )
         mbFaultResetRequested = false;
         mbNewDesiredAngleRequested = false;
         mbNewProfileVelocityRequested = false;
+        mbNewMaximumFollowingErrorRequested = false;
         
         mReadAction = SDOField( SDOField::eT_Read, 
             "Position Actual", 0x6064, 0, HandleSDOReadComplete, this );
@@ -178,6 +183,7 @@ void CANMotorController::Update( S32 frameIdx )
                     mbFaultResetRequested = false;
                     mbNewDesiredAngleRequested = false;
                     mbNewProfileVelocityRequested = false;
+                    mbNewMaximumFollowingErrorRequested = false;
                     mRunningTask = eRT_None;
                     mState = eS_Running;
                 }
@@ -204,6 +210,14 @@ void CANMotorController::Update( S32 frameIdx )
                         mbNewProfileVelocityRequested = false;
                         mRunningTask = eRT_SetProfileVelocity;
                     }
+                    else if ( mbNewMaximumFollowingErrorRequested )
+                    {
+                        mSetMaxFollowingErrorCommands[ 0 ].SetU32( mNewMaximumFollowingError );
+                        mpRunningTaskCommands = mSetMaxFollowingErrorCommands;
+                        mCurRunningTaskCommandIdx = 0;
+                        mbNewMaximumFollowingErrorRequested = false;
+                        mRunningTask = eRT_SetMaximumFollowingError;
+                    }
                     else if ( mbNewDesiredAngleRequested )
                     {
                         mSetDesiredAngleCommands[ 0 ].SetS32( mNewDesiredAngle );
@@ -224,6 +238,7 @@ void CANMotorController::Update( S32 frameIdx )
                     case eRT_SetDesiredAngle:
                     case eRT_SendFaultReset:
                     case eRT_SetProfileVelocity:
+                    case eRT_SetMaximumFollowingError:
                     {
                         // Process the current SDO write
                         const SDOField* pCurCommand = &mpRunningTaskCommands[ mCurRunningTaskCommandIdx ];                        
@@ -391,6 +406,21 @@ void CANMotorController::SetProfileVelocity( U32 profileVelocity )
     
     mNewProfileVelocity = profileVelocity;
     mbNewProfileVelocityRequested = true;
+}
+
+//------------------------------------------------------------------------------
+void CANMotorController::SetMaximumFollowingError( U32 maximumFollowingError )
+{
+    if ( (eRT_SetMaximumFollowingError == mRunningTask || mbNewMaximumFollowingErrorRequested)
+        && maximumFollowingError == mNewMaximumFollowingError )
+    {
+        // We're already trying to set the max following error so ignore the request
+        //printf( "Ignoring max following error request\n" );
+        return;
+    }
+
+    mNewMaximumFollowingError = maximumFollowingError;
+    mbNewMaximumFollowingErrorRequested = true;
 }
 
 //------------------------------------------------------------------------------

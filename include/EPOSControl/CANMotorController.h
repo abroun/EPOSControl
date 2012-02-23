@@ -62,7 +62,8 @@ class CANMotorController
         eRT_None,
         eRT_SetDesiredAngle,
         eRT_SendFaultReset,
-        eRT_SetProfileVelocity
+        eRT_SetProfileVelocity,
+        eRT_SetMaximumFollowingError
     };
     
     //--------------------------------------------------------------------------
@@ -102,6 +103,7 @@ class CANMotorController
     // NOTE: These routines are _not_ thread safe with the update routine
     public: void SetDesiredAngle( S32 desiredAngle, S32 frameIdx );
     public: void SetProfileVelocity( U32 profileVelocity );
+    public: void SetMaximumFollowingError( U32 maximumFollowingError );
     public: void SendFaultReset();
     
     //--------------------------------------------------------------------------
@@ -147,7 +149,7 @@ class CANMotorController
     private: bool mbFaultResetRequested;
     private: bool mbNewDesiredAngleRequested;
     private: bool mbNewProfileVelocityRequested;
-    
+    private: bool mbNewMaximumFollowingErrorRequested;
     
     private: bool mbStatusValid;
     private: U16 mEposStatusword;
@@ -155,6 +157,7 @@ class CANMotorController
     
     private: S32 mNewDesiredAngle;
     private: S32 mNewProfileVelocity;
+    private: U32 mNewMaximumFollowingError;
     private: S32 mSDOWriteFrameIdx;
     
     private: const SDOField* mpConfigurationSetupCommands;
@@ -165,6 +168,7 @@ class CANMotorController
     
     private: SDOField mSetDesiredAngleCommands[ 2 + 1 ];
     private: SDOField mSetProfileVelocityCommands[ 1 + 1 ];
+    private: SDOField mSetMaxFollowingErrorCommands[ 1 + 1 ];
     
     private: static const SDOField POSITION_CONTROL_SETUP_COMMANDS[];
     private: static const SDOField FAULT_RESET_COMMANDS[];

@@ -57,6 +57,7 @@ class CANChannel
     
     public: void SetMotorAngle( U8 nodeId, S32 angle );
     public: void SetMotorProfileVelocity( U32 velocity );
+    public: void SetMaximumFollowingError( U8 nodeId, U32 maximumFollowingError );
     public: void SendFaultReset( U8 nodeId );
     
     //--------------------------------------------------------------------------

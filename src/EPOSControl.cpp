@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "EPOSControl/EPOSControl.h"
 #include "CANOpenInterface.h"
@@ -49,26 +50,39 @@ void EPOS_DeinitLibrary()
 }
 
 //------------------------------------------------------------------------------
-CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canDevice, eBaudRate baudRate )
+CANChannel* EPOS_OpenCANChannel( const char* driverLibraryName, const char* canDevice,
+                                 eBaudRate baudRate, S32 channelIdx )
 {
     CANChannel* pResult = NULL;
     
-    // Look for a free channel
-    for ( S32 channelIdx = 0; channelIdx < MAX_NUM_CAN_CHANNELS; channelIdx++ )
+    if ( -1 == channelIdx )
     {
-        if ( !gbChannelInUse[ channelIdx ] )
+        for ( S32 i = 0; i < MAX_NUM_CAN_CHANNELS; i++ )
         {
-            if ( gCANChannels[ channelIdx ].Init( driverLibraryName, canDevice, baudRate, channelIdx + 1 ) )
+            if ( !gbChannelInUse[ i ] )
             {
-                // A free channel has been found and initialised
-                pResult = &gCANChannels[ channelIdx ];
-                gbChannelInUse[ channelIdx ] = true;
+                channelIdx = i;
+                break;          // Found a free channel
             }
-
-            break;
         }
     }
     
+    if ( -1 == channelIdx )
+    {
+        fprintf( stderr, "Error: No free slot for channel\n" );
+    }
+    else if ( gbChannelInUse[ channelIdx ] )
+    {
+        fprintf( stderr, "Error: Slot %i already in use\n", channelIdx );
+    }
+
+    if ( gCANChannels[ channelIdx ].Init( driverLibraryName, canDevice, baudRate, channelIdx + 1 ) )
+    {
+        // A channel has been found and initialised
+        pResult = &gCANChannels[ channelIdx ];
+        gbChannelInUse[ channelIdx ] = true;
+    }
+
     return pResult;
 }
 

@@ -131,23 +131,49 @@ static PyObject* setJointAngles( PyObject* pSelf, PyObject* args )
 //------------------------------------------------------------------------------
 // Sets the speed in encoder ticks per second at which the motors move
 static PyObject* setMotorProfileVelocity( PyObject* pSelf, PyObject* args )
-{    
+{
+    S32 channelIdx;
+    S32 nodeId;
+    S32 profileVelocity;
+    if ( !PyArg_ParseTuple( args, "iii", &channelIdx, &nodeId, &profileVelocity ) )
+    {
+        PyErr_SetString( PyExc_Exception, "Invalid arguments" );
+        return NULL;
+    }
+    
+    channelIdx--;   // Convert to 0 indexed
+
+    if ( NULL != gpChannels[ channelIdx ] )
+    {
+        gpChannels[ channelIdx ]->SetMotorProfileVelocity( (U8)nodeId, (U32)profileVelocity );
+    }
+    
+    Py_RETURN_NONE;
+}
+
+//------------------------------------------------------------------------------
+// Sets the speed in encoder ticks per second at which all the motors move
+static PyObject* setMotorProfileVelocityForAll( PyObject* pSelf, PyObject* args )
+{
     S32 profileVelocity;
     if ( !PyArg_ParseTuple( args, "i", &profileVelocity ) )
     {
         PyErr_SetString( PyExc_Exception, "Invalid arguments" );
         return NULL;
     }
-    
-    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
-    {
-        if ( NULL != gpChannels[ channelIdx ] )
-        {
-            gpChannels[ channelIdx ]->SetMotorProfileVelocity( (U32)profileVelocity );
-        }
-    }
 
-    
+    for ( S32 channelIdx = 0; channelIdx < NUM_CHANNELS; channelIdx++ )
+   {
+       if ( NULL != gpChannels[ channelIdx ] )
+       {
+           for ( U8 nodeId = 0; nodeId < CANChannel::MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+           {
+               gpChannels[ channelIdx ]->SetMotorProfileVelocity( nodeId, (U32)profileVelocity );
+           }
+       }
+   }
+
+
     Py_RETURN_NONE;
 }
 
@@ -318,6 +344,7 @@ static PyMethodDef EPOSControlObjectMethods[] =
     { "getMotorControllerData", getMotorControllerData, METH_VARARGS, "Get data about the motor controllers" },
     { "setJointAngles", setJointAngles, METH_VARARGS, "Set one or more motor controller joint angles" },
     { "setMotorProfileVelocity", setMotorProfileVelocity, METH_VARARGS, "Sets the speed in encoder ticks per second at which the motors move" },
+    { "setMotorProfileVelocityForAll", setMotorProfileVelocityForAll, METH_VARARGS, "Sets the speed in encoder ticks per second at which the motors move" },
     { "setMaximumFollowingError", setMaximumFollowingError, METH_VARARGS, "Sets the maximum following error for a motor" },
     { "sendFaultReset", sendFaultReset, METH_VARARGS, "Tries to reset a halted EPOS node" },
     { "updateChannel", updateChannel, METH_VARARGS, "Updates a given channel" },

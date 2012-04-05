@@ -164,9 +164,9 @@ void CANChannel::SetMotorAngle( U8 nodeId, S32 angle )
 }
 
 //------------------------------------------------------------------------------
-void CANChannel::SetMotorProfileVelocity( U32 velocity )
+void CANChannel::SetMotorProfileVelocity( U8 nodeId, U32 velocity )
 {
-    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+    if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
     {
         mMotorControllers[ nodeId ].SetProfileVelocity( velocity );
     }
@@ -175,7 +175,7 @@ void CANChannel::SetMotorProfileVelocity( U32 velocity )
 //------------------------------------------------------------------------------
 void CANChannel::SetMaximumFollowingError( U8 nodeId, U32 maximumFollowingError )
 {
-    for ( S32 nodeId = 0; nodeId < MAX_NUM_MOTOR_CONTROLLERS; nodeId++ )
+    if ( nodeId < MAX_NUM_MOTOR_CONTROLLERS )
     {
         mMotorControllers[ nodeId ].SetMaximumFollowingError( maximumFollowingError );
     }

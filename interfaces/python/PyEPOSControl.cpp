@@ -315,13 +315,13 @@ static int EPOSControlObject_init( EPOSControlObject *self,
     }
     
     // Initialise the channels
-    gpChannels[ 0 ] = EPOS_OpenCANChannel( "libSocketCanDriver.so", "can0", eBR_1M, 0 );
+    gpChannels[ 0 ] = EPOS_OpenCANChannel( "libCan4LinuxDriver.so", "/dev/can0", eBR_1M, 0 );
     if ( NULL == gpChannels[ 0 ] )
     {
         fprintf( stderr, "Warning: Unable to open CAN bus channel 1\n" );
     }
 
-    gpChannels[ 1 ] = EPOS_OpenCANChannel( "libCanUSBDriver.so", "32", eBR_1M, 1 );
+    gpChannels[ 1 ] = EPOS_OpenCANChannel( "libCan4LinuxDriver.so", "/dev/can1", eBR_1M, 1 );
     if ( NULL == gpChannels[ 1 ] )
     {
         fprintf( stderr, "Warning: Unable to open CAN bus channel 2\n" );
